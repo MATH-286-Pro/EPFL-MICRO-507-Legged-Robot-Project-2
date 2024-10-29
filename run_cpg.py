@@ -51,6 +51,7 @@ TIME_STEP = 0.001
 foot_y = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
+# 创建——环境类
 env = QuadrupedGymEnv(render=True,              # visualize
                     on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
@@ -61,13 +62,14 @@ env = QuadrupedGymEnv(render=True,              # visualize
                     # record_video=True
                     )
 
+# 创建——中央发生器类
 # initialize Hopf Network, supply gait
 cpg = HopfNetwork(time_step=TIME_STEP)
 
 TEST_STEPS = int(10 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
-# [TODO] initialize data structures to save CPG and robot states
+# [#0000FF TODO] initialize data structures to save CPG and robot states
 
 
 ############## Sample Gains
@@ -83,9 +85,9 @@ for j in range(TEST_STEPS):
   action = np.zeros(12) 
   # get desired foot positions from CPG 
   xs,zs = cpg.update()
-  # [TODO] get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
-  # q = env.robot.GetMotorAngles()
-  # dq = 
+  # [#0000FF TODO] get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
+  q = env.robot.GetMotorAngles()      # 获取所有电机角度
+  dq = env.robot.GetMotorVelocities() # 获取所有电机速度
 
   # loop through desired foot positions and calculate torques
   for i in range(4):
@@ -94,18 +96,18 @@ for j in range(TEST_STEPS):
     # get desired foot i pos (xi, yi, zi) in leg frame
     leg_xyz = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
     # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
-    leg_q = np.zeros(3) # [TODO] 
+    leg_q = np.zeros(3) # [#0000FF TODO] 
     # Add joint PD contribution to tau for leg i (Equation 4)
-    tau += np.zeros(3) # [TODO] 
+    tau += np.zeros(3)  # [#0000FF TODO] 
 
     # add Cartesian PD contribution
     if ADD_CARTESIAN_PD:
       # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
-      # [TODO] 
+      # [#0000FF TODO] 
       # Get current foot velocity in leg frame (Equation 2)
-      # [TODO] 
+      # [#0000FF TODO] 
       # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau += np.zeros(3) # [TODO]
+      tau += np.zeros(3) # [#0000FF TODO]
 
     # Set tau for legi in action vector
     action[3*i:3*i+3] = tau
@@ -113,7 +115,7 @@ for j in range(TEST_STEPS):
   # send torques to robot and simulate TIME_STEP seconds 
   env.step(action) 
 
-  # [TODO] save any CPG or robot states
+  # [#0000FF TODO] save any CPG or robot states
 
 
 
@@ -122,6 +124,6 @@ for j in range(TEST_STEPS):
 #####################################################
 # example
 # fig = plt.figure()
-# plt.plot(t,joint_pos[1,:], label='FR thigh')  #00FF00
+# plt.plot(t,joint_pos[1,:], label='FR thigh')  #00FF00 joint_pos 这个变量上面没有
 # plt.legend()
 # plt.show()
