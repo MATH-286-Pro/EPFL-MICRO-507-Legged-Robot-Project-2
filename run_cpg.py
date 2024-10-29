@@ -46,12 +46,13 @@ from env.hopf_network import HopfNetwork
 from env.quadruped_gym_env import QuadrupedGymEnv
 
 
-ADD_CARTESIAN_PD = True
+ADD_CARTESIAN_PD = True   #00FF00
 TIME_STEP = 0.001
 foot_y = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
-# 创建——环境类 (Cearte env class)
+# 创建——环境类                            (Cearte env class)
+# 环境类创建过程中会一起创建 四足机器人实例  (Create the quadruped robot class at the same time)
 env = QuadrupedGymEnv(render=True,              # visualize
                     on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
@@ -80,34 +81,56 @@ kd=np.array([2,2,2])
 kpCartesian = np.diag([500]*3)
 kdCartesian = np.diag([20]*3)
 
+#00FF00 添加测试
+des_p_list = []
+
 for j in range(TEST_STEPS):
   # initialize torque array to send to motors
   action = np.zeros(12) 
   # get desired foot positions from CPG 
   xs,zs = cpg.update()
   # [#0000FF TODO] get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
-  q = env.robot.GetMotorAngles()      # 获取所有电机角度
-  dq = env.robot.GetMotorVelocities() # 获取所有电机速度
+  q = env.robot.GetMotorAngles()      # 获取所有(12个)电机角度
+  dq = env.robot.GetMotorVelocities() # 获取所有(12个)电机速度
 
+  # 对四只脚进行计算
   # loop through desired foot positions and calculate torques
   for i in range(4):
-    # initialize torques for legi
+    # initialize torques for leg_i
     tau = np.zeros(3)
-    # get desired foot i pos (xi, yi, zi) in leg frame
-    leg_xyz = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
-    # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
-    leg_q = np.zeros(3) # [#0000FF TODO] 
-    # Add joint PD contribution to tau for leg i (Equation 4)
-    tau += np.zeros(3)  # [#0000FF TODO] 
 
-    # add Cartesian PD contribution
+    # [#00FF00]
+    # 获取实际参数
+    real_q  = q[3*i:3*i+3]
+    real_dq = dq[3*i:3*i+3]
+
+    # 足末端：目标位置
+    # 注意：跟 Project 0 不一样，这里是三维的
+    # get desired foot i pos (xi, yi, zi) in leg frame 
+    # attension: it's 3 dimensional
+    leg_xyz = des_p = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
+    if i==0: des_p_list.append(des_p) #00FF00 添加测试
+
+    # 使用逆运动学计算关节角度
+    # [#0000FF TODO] call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py) 
+    des_q = env.robot.ComputeInverseKinematics(legID = i, xyz_coord = leg_xyz) 
+
+    # 使用PID输出力矩
+    # [#0000FF TODO] Add joint PD contribution to tau for leg i (Equation 4)  
+    des_dq = 0
+    tau += kp @ (des_q - real_q) + kd @ (des_dq - real_dq)   
+
+    # 增加 笛卡尔坐标 PD (add Cartesian PD contribution)
     if ADD_CARTESIAN_PD:
-      # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
-      # [#0000FF TODO] 
-      # Get current foot velocity in leg frame (Equation 2)
-      # [#0000FF TODO] 
-      # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau += np.zeros(3) # [#0000FF TODO]
+      # [#0000FF TODO] Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
+      J, real_p = env.robot.ComputeJacobianAndPosition(i)
+      
+      # [#0000FF TODO] Get current foot velocity in leg frame (Equation 2)
+      real_dp = J @ real_q @ real_dq
+
+      # [#0000FF TODO] Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
+      des_dp = 0
+      tau += J.T @ real_q @ (kpCartesian * (des_p - real_p) + kdCartesian * (des_dp - real_dp))  #FF0000
 
     # Set tau for legi in action vector
     action[3*i:3*i+3] = tau
@@ -123,7 +146,8 @@ for j in range(TEST_STEPS):
 # PLOTS
 #####################################################
 # example
-# fig = plt.figure()
+fig = plt.figure()
 # plt.plot(t,joint_pos[1,:], label='FR thigh')  #00FF00 joint_pos 这个变量上面没有
-# plt.legend()
-# plt.show()
+plt.plot(t,des_p_list)
+plt.legend()
+plt.show()
