@@ -1,0 +1,9 @@
+.DS_Store
+*.egg-info
+__pycache__/
+logs/
+
+
+.vscode
+micro-507
+__pycache__
