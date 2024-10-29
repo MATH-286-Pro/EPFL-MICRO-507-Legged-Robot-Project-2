@@ -2,7 +2,7 @@
 *.egg-info
 __pycache__/
 logs/
-
+test.py
 
 .vscode
 micro-507
