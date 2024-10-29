@@ -51,7 +51,7 @@ TIME_STEP = 0.001
 foot_y = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
-# 创建——环境类
+# 创建——环境类 (Cearte env class)
 env = QuadrupedGymEnv(render=True,              # visualize
                     on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
@@ -62,7 +62,7 @@ env = QuadrupedGymEnv(render=True,              # visualize
                     # record_video=True
                     )
 
-# 创建——中央发生器类
+# 创建——中央发生器类 (Create CPG class)
 # initialize Hopf Network, supply gait
 cpg = HopfNetwork(time_step=TIME_STEP)
 
@@ -72,7 +72,7 @@ t = np.arange(TEST_STEPS)*TIME_STEP
 # [#0000FF TODO] initialize data structures to save CPG and robot states
 
 
-############## Sample Gains
+# 设置 PID 参数 (Set PID Parameter)
 # joint PD gains
 kp=np.array([100,100,100])
 kd=np.array([2,2,2])
