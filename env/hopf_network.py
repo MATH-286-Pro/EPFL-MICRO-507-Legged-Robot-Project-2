@@ -109,22 +109,22 @@ class HopfNetwork():
     # self.PHI_pace = np.zeros((4,4))
 
     phase_f = np.pi *2
-    self.PHI_trot = np.array([[0, 0.5*phase_f, 0.5*phase_f, 0],
-                              [-0.5*phase_f, 0, 0, -0.5*phase_f],
-                              [-0.5*phase_f, 0, 0, -0.5*phase_f],
-                              [0, 0.5*phase_f, 0.5*phase_f, 0]])
-    self.PHI_pace = np.array([[0, 0.5*phase_f, 0, 0.5*phase_f],
-                              [-0.5*phase_f, 0, -0.5*phase_f, 0],
-                              [0, 0.5*phase_f, 0, 0.5*phase_f],
-                              [-0.5*phase_f, 0, 0.5*phase_f, 0]])
-    self.PHI_walk = np.array([[0, 0.5*phase_f, 0.25*phase_f, -0.25*phase_f],
-                              [-0.5*phase_f, 0, -0.25*phase_f, -0.75*phase_f],
-                              [-0.25*phase_f, 0.25*phase_f, 0, -0.5*phase_f],
-                              [0.25*phase_f, 0.75*phase_f, 0.5*phase_f, 0]])
-    self.PHI_bound = np.array([[0, 0, 0.5*phase_f, 0.5*phase_f],
-                               [0, 0, 0.5*phase_f, 0.5*phase_f],
-                               [-0.5*phase_f, -0.5*phase_f, 0, 0],
-                               [-0.5*phase_f, -0.5*phase_f, 0, 0]])
+    self.PHI_trot = np.array([[0, 0.5, 0.5, 0],
+                              [-0.5, 0, 0, -0.5],
+                              [-0.5, 0, 0, -0.5],
+                              [0, 0.5, 0.5, 0]]) * phase_f
+    self.PHI_pace = np.array([[0, 0.5, 0, 0.5],
+                              [-0.5, 0, -0.5, 0],
+                              [0, 0.5, 0, 0.5],
+                              [-0.5, 0, 0.5, 0]]) * phase_f
+    self.PHI_walk = np.array([[0, 0.5, 0.25, -0.25],
+                              [-0.5, 0, -0.25, -0.75],
+                              [-0.25, 0.25, 0, -0.5],
+                              [0.25, 0.75, 0.5, 0]]) * phase_f
+    self.PHI_bound = np.array([[0, 0, 0.5, 0.5],
+                               [0, 0, 0.5, 0.5],
+                               [-0.5, -0.5, 0, 0],
+                               [-0.5, -0.5, 0, 0]]) * phase_f
                               
     
 
