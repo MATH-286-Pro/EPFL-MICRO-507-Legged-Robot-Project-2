@@ -28,8 +28,8 @@
 ## 3.任务说明
 - **run_cpg.py & hopf_network.py**
   - 完成`hopf_network.py` 文件中的步态生成器
-  - 完成 `run_cpg.py` 的 task space
-  - 然后在 quadruped_gym_env.py 类的实例中执行
+  - 完成 `run_cpg.py` 的 joint space + cartesian space 的 PD 控制器
+  - 运行 `run_cpg.py` 文件，查看效果
 - **run_sb3.py & load_sb3.py**
   - 这两个文件提供了基于 stable-baselines3 的强化学习算法训练接口
   - 你需要仔细阅读文档以了解不同算法和训练超参数

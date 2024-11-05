@@ -46,7 +46,7 @@ from env.hopf_network import HopfNetwork
 from env.quadruped_gym_env import QuadrupedGymEnv
 
 
-ADD_CARTESIAN_PD = True   #00FF00 原先为 True (Original was True)
+ADD_CARTESIAN_PD = True 
 TIME_STEP = 0.001
 foot_y = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
@@ -116,9 +116,9 @@ for j in range(TEST_STEPS):
     real_q  = q[3*i:3*i+3]
     real_dq = dq[3*i:3*i+3]
 
-    des_q = env.robot.ComputeInverseKinematics(legID = i, xyz_coord = leg_xyz) 
+    des_q  = env.robot.ComputeInverseKinematics(legID = i, xyz_coord = leg_xyz) 
     des_dq = np.zeros(3)
-    
+
     tau += kp * (des_q - real_q) + kd * (des_dq - real_dq)   
 
     # 增加 笛卡尔坐标 PD (add Cartesian PD contribution)
@@ -132,7 +132,7 @@ for j in range(TEST_STEPS):
       # [#0000FF TODO] Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       des_p  = leg_xyz
       des_dp = np.zeros(3)
-      tau += J.T @ ((kpCartesian @ (des_p - real_p) + kdCartesian @ (des_dp - real_dp)))  #00FF00 正确未知 Not Sure
+      tau += J.T @ ((kpCartesian @ (des_p - real_p) + kdCartesian @ (des_dp - real_dp))) 
 
     # Set tau for leg_i in action vector
     action[3*i:3*i+3] = tau
