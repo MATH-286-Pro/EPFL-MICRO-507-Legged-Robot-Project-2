@@ -93,11 +93,10 @@ print("\nLoaded model", model_name, "\n")
 obs = env.reset()
 episode_reward = 0
 
-# [TODO] initialize arrays to save data from simulation 
-#
+# #0000FF TODO initialize arrays to save data from simulation 
 
 for i in range(2000):
-    action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
+    action, _states = model.predict(obs,deterministic=False) # sample at test time? (#0000FF TODO: test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
     if dones:
@@ -105,8 +104,8 @@ for i in range(2000):
         print('Final base position', info[0]['base_pos'])
         episode_reward = 0
 
-    # [TODO] save data from current robot states for plots 
+    # #0000FF TODO save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
     #
     
-# [TODO] make plots:
+# #0000FF TODO make plots:

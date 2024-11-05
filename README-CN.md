@@ -18,6 +18,14 @@
   deactivate
   ```
 
+- 1.0 使用 conda 创建虚拟环境
+    ```
+    conda create -n micro-507 python=3.8
+    source /c/Users/MATH-286-Dell/miniconda3/etc/profile.d/conda.sh
+    conda activate micro-507
+    pip install -r requirements.txt
+    ```
+
 
 ## 2.文件说明
 - **涉及知识点**
@@ -34,6 +42,7 @@
   - 这两个文件提供了基于 stable-baselines3 的强化学习算法训练接口
   - 你需要仔细阅读文档以了解不同算法和训练超参数
   - 当然，你也可以使用其他强化学习库
+  - 完成 `quadruped_gym_env.py`
 
 
 ## 4.测试日志

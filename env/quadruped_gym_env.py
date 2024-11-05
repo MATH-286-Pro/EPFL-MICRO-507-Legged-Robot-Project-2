@@ -72,7 +72,7 @@ VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d
 
 # Implemented observation spaces for deep reinforcement learning: 
 #   "DEFAULT":    motor angles and velocities, body orientation
-#   "LR_COURSE_OBS":  [TODO: what should you include? what is reasonable to measure on the real system? CPG states?] 
+#   "LR_COURSE_OBS":  [#0000FF TODO: what should you include? what is reasonable to measure on the real system? CPG states?] 
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
@@ -80,7 +80,7 @@ VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #     - "FLAGRUN"
 #         move to goal, once reached, a new goal is randomly selected.
 #     - "LR_COURSE_TASK" 
-#         [TODO: what should you train for?]
+#         [#0000FF TODO: what should you train for?]
 #         Ideally we want to command A1 to run in any direction while expending minimal energy
 #         How will you construct your reward function? 
 
@@ -211,7 +211,7 @@ class QuadrupedGymEnv(gym.Env):
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4))) -  OBSERVATION_EPS)
     elif self._observation_space_mode == "LR_COURSE_OBS":
-      # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
+      # #0000FF TODO Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # if using CPG-RL, remember to include limits on these
       observation_high = (np.zeros(50) + OBSERVATION_EPS)
@@ -241,7 +241,7 @@ class QuadrupedGymEnv(gym.Env):
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
     elif self._observation_space_mode == "LR_COURSE_OBS":
-      # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
+      # #0000FF TODO Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
       self._observation = np.zeros(50)
@@ -349,7 +349,7 @@ class QuadrupedGymEnv(gym.Env):
     
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
-    # [TODO] add your reward function. 
+    # #0000FF TODO add your reward function. 
     return 0
 
   def _reward(self):
@@ -393,7 +393,7 @@ class QuadrupedGymEnv(gym.Env):
     # clip RL actions to be between -1 and 1 (standard RL technique)
     u = np.clip(actions,-1,1)
     # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
-    # [TODO: edit (do you think these should these be increased? How limiting is this?)]
+    # [#0000FF TODO: edit (do you think these should these be increased? How limiting is this?)]
     scale_array = np.array([0.1, 0.05, 0.08]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
     des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u
@@ -407,15 +407,15 @@ class QuadrupedGymEnv(gym.Env):
     action = np.zeros(12)
     for i in range(4):
       # get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
-      # [TODO]
+      # #0000FF TODO
       # desired foot position i (from RL above)
-      Pd = np.zeros(3) # [TODO]
+      Pd = np.zeros(3) # #0000FF TODO
       # desired foot velocity i
       vd = np.zeros(3) 
       # foot velocity in leg frame i (Equation 2)
-      # [TODO]
+      # #0000FF TODO
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.zeros(3) # [TODO]
+      tau = np.zeros(3) # #0000FF TODO
 
       action[3*i:3*i+3] = tau
 
@@ -456,9 +456,9 @@ class QuadrupedGymEnv(gym.Env):
       z = zs[i]
 
       # call inverse kinematics to get corresponding joint angles
-      q_des = np.zeros(3) # [TODO]
+      q_des = np.zeros(3) # #0000FF TODO
       # Add joint PD contribution to tau
-      tau = np.zeros(3) # [TODO] 
+      tau = np.zeros(3) # #0000FF TODO 
 
       # add Cartesian PD contribution (as you wish)
       # tau +=
