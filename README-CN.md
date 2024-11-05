@@ -27,8 +27,8 @@
 
 ## 3.任务说明
 - **run_cpg.py & hopf_network.py**
-  - `hopf_network.py` 提供了一个 CPG 类的框架用于实现各种步态
-  - 你需要将些映射到 `run_cpg.py` 的关节指令中
+  - 完成`hopf_network.py` 文件中的步态生成器
+  - 完成 `run_cpg.py` 的 task space
   - 然后在 quadruped_gym_env.py 类的实例中执行
 - **run_sb3.py & load_sb3.py**
   - 这两个文件提供了基于 stable-baselines3 的强化学习算法训练接口

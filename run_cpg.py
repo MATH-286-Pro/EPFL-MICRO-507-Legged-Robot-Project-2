@@ -46,13 +46,15 @@ from env.hopf_network import HopfNetwork
 from env.quadruped_gym_env import QuadrupedGymEnv
 
 
-ADD_CARTESIAN_PD = False #True   #00FF00
+ADD_CARTESIAN_PD = False #True   #00FF00 原先为 True (Original was True)
 TIME_STEP = 0.001
 foot_y = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
-# 创建——环境类                            (Cearte env class)
-# 环境类创建过程中会一起创建 四足机器人实例  (Create the quadruped robot class at the same time)
+# 创建——环境类 
+# 环境类创建过程中会一起创建 四足机器人实例  
+# (Cearte env class)
+# (Create the quadruped robot class at the same time)
 env = QuadrupedGymEnv(render=True,              # visualize
                     on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
@@ -63,7 +65,8 @@ env = QuadrupedGymEnv(render=True,              # visualize
                     # record_video=True
                     )
 
-# 创建——中央发生器类 (Create CPG class)
+# 创建——中央发生器类 
+# (Create CPG class)
 # initialize Hopf Network, supply gait
 cpg = HopfNetwork(time_step=TIME_STEP)
 
@@ -81,7 +84,7 @@ kd=np.array([2,2,2])
 kpCartesian = np.diag([500]*3)
 kdCartesian = np.diag([20]*3)
 
-#00FF00 添加测试
+#00FF00 添加测试 Add for plot test
 des_p_list_1 = []
 des_p_list_2 = []
 tau_list_1   = []
@@ -93,17 +96,18 @@ for j in range(TEST_STEPS):
   # get desired foot positions from CPG 
   xs,zs = cpg.update()
   # [#0000FF TODO] get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
-  q = env.robot.GetMotorAngles()      # 获取所有(12个)电机角度
-  dq = env.robot.GetMotorVelocities() # 获取所有(12个)电机速度
+  q = env.robot.GetMotorAngles()      # 获取所有(12个)电机角度 Get all (12) motors' angle
+  dq = env.robot.GetMotorVelocities() # 获取所有(12个)电机速度 Get all (12) motors' velocity
 
   # 对四只脚进行计算
+  # computation for 4 legs
   # loop through desired foot positions and calculate torques
   for i in range(4):
     # initialize torques for leg_i
     tau = np.zeros(3)
 
-    # [#00FF00]
-    # 获取实际参数
+    # [#00FF00] 获取实际参数 
+    # Get actuall angle and angular velocity
     real_q  = q[3*i:3*i+3]
     real_dq = dq[3*i:3*i+3]
 
@@ -112,20 +116,19 @@ for j in range(TEST_STEPS):
     # get desired foot i pos (xi, yi, zi) in leg frame 
     # attension: it's 3 dimensional
     leg_xyz = des_p = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
-    # leg_xyz = des_p = np.array([0,sideSign[i] * foot_y,-0.3]) #00FF00
     
-    if i==0: des_p_list_1.append(des_p) #00FF00 添加测试
-    if i==1: des_p_list_2.append(des_p)
-
     # 使用逆运动学计算关节角度
+    # Use inverse kinematics to compute the joint angle 
     # [#0000FF TODO] call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py) 
     des_q = env.robot.ComputeInverseKinematics(legID = i, xyz_coord = leg_xyz) 
 
     # 使用PID输出力矩
+    # Use PID to compute the output torque
     # [#0000FF TODO] Add joint PD contribution to tau for leg i (Equation 4)  
     des_dq = np.zeros(3)
     tau += kp * (des_q - real_q) + kd * (des_dq - real_dq)   
 
+    # #FF0000 Untested 未测试
     # 增加 笛卡尔坐标 PD (add Cartesian PD contribution)
     if ADD_CARTESIAN_PD:
       # [#0000FF TODO] Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
@@ -140,8 +143,7 @@ for j in range(TEST_STEPS):
 
     # Set tau for leg_i in action vector
     action[3*i:3*i+3] = tau
-    # if i==0: tau_list_1.append(tau) #00FF00 添加测试
-    # if i==1: tau_list_2.append(tau)
+
   # send torques to robot and simulate TIME_STEP seconds 
   env.step(action) 
 
