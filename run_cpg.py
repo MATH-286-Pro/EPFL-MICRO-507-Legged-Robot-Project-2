@@ -46,7 +46,7 @@ from env.hopf_network import HopfNetwork
 from env.quadruped_gym_env import QuadrupedGymEnv
 
 
-ADD_CARTESIAN_PD = True   #00FF00
+ADD_CARTESIAN_PD = False #True   #00FF00
 TIME_STEP = 0.001
 foot_y = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
@@ -82,7 +82,10 @@ kpCartesian = np.diag([500]*3)
 kdCartesian = np.diag([20]*3)
 
 #00FF00 添加测试
-des_p_list = []
+des_p_list_1 = []
+des_p_list_2 = []
+tau_list_1   = []
+tau_list_2   = []
 
 for j in range(TEST_STEPS):
   # initialize torque array to send to motors
@@ -109,7 +112,10 @@ for j in range(TEST_STEPS):
     # get desired foot i pos (xi, yi, zi) in leg frame 
     # attension: it's 3 dimensional
     leg_xyz = des_p = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
-    if i==0: des_p_list.append(des_p) #00FF00 添加测试
+    # leg_xyz = des_p = np.array([0,sideSign[i] * foot_y,-0.3]) #00FF00
+    
+    if i==0: des_p_list_1.append(des_p) #00FF00 添加测试
+    if i==1: des_p_list_2.append(des_p)
 
     # 使用逆运动学计算关节角度
     # [#0000FF TODO] call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py) 
@@ -117,8 +123,8 @@ for j in range(TEST_STEPS):
 
     # 使用PID输出力矩
     # [#0000FF TODO] Add joint PD contribution to tau for leg i (Equation 4)  
-    des_dq = 0
-    tau += kp @ (des_q - real_q) + kd @ (des_dq - real_dq)   
+    des_dq = np.zeros(3)
+    tau += kp * (des_q - real_q) + kd * (des_dq - real_dq)   
 
     # 增加 笛卡尔坐标 PD (add Cartesian PD contribution)
     if ADD_CARTESIAN_PD:
@@ -130,11 +136,12 @@ for j in range(TEST_STEPS):
 
       # [#0000FF TODO] Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       des_dp = 0
-      tau += J.T @ real_q @ (kpCartesian * (des_p - real_p) + kdCartesian * (des_dp - real_dp))  #FF0000
+      tau += J.T @ (real_q * (kpCartesian * (des_p - real_p) + kdCartesian * (des_dp - real_dp)))  #FF0000
 
-    # Set tau for legi in action vector
+    # Set tau for leg_i in action vector
     action[3*i:3*i+3] = tau
-
+    # if i==0: tau_list_1.append(tau) #00FF00 添加测试
+    # if i==1: tau_list_2.append(tau)
   # send torques to robot and simulate TIME_STEP seconds 
   env.step(action) 
 
@@ -148,6 +155,9 @@ for j in range(TEST_STEPS):
 # example
 fig = plt.figure()
 # plt.plot(t,joint_pos[1,:], label='FR thigh')  #00FF00 joint_pos 这个变量上面没有
-plt.plot(t,des_p_list)
-plt.legend()
+plt.plot(t,des_p_list_1)
+plt.plot(t,des_p_list_2)
+# plt.plot(t,tau_list_1)
+# plt.plot(t,tau_list_2, 'g')
+plt.legend(['x','y','z'])
 plt.show()
