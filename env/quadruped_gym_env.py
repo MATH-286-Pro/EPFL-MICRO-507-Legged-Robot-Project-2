@@ -214,8 +214,40 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # if using CPG-RL, remember to include limits on these
-      observation_high = (np.zeros(50) + OBSERVATION_EPS)
-      observation_low = (np.zeros(50) -  OBSERVATION_EPS)
+      
+      orientation_limit = np.array([1.0, 1.0, 1.0, 1.0])  # Quaternion
+      linear_velocity_limit = np.array([5.0, 1.0, 5.0])   # Max linear velocity in m/s
+      angular_velocity_limit = np.array([10.0, 10.0, 10.0])  # Max angular velocity in rad/s
+      foot_contact_limit_upp = np.array([1.0] * 4)  # Foot contacts are binary (0 or 1)
+      foot_contact_limit_low = np.array([0.0] * 4)
+      
+      # CPG state limits
+      cpg_amplitude_limit_upp = np.array([MU_UPP] * 4)  # Upper limit based on CPG amplitude range
+      cpg_amplitude_limit_low = np.array([MU_LOW] * 4)  # lower limit based on CPG amplitude range
+      cpg_phase_limit_upp = np.array([2 * np.pi] * 4)   # Phase ranges from 0 to 2π
+      cpg_phase_limit_low = np.array([0.0] * 4)
+      cpg_amplitude_derivative_limit = np.array([5.0] * 4)  # Rate limit for amplitude change
+      cpg_phase_derivative_limit = np.array([5.0] * 4)  # Rate limit for phase change
+
+      # Concatenate all high and low bounds
+      observation_high = np.concatenate((orientation_limit,
+                                         linear_velocity_limit,
+                                         angular_velocity_limit,
+                                         foot_contact_limit_upp,
+                                         cpg_amplitude_limit_upp,
+                                         cpg_phase_limit_upp,
+                                         cpg_amplitude_derivative_limit,
+                                         cpg_phase_derivative_limit)) + OBSERVATION_EPS
+
+      observation_low = np.concatenate((-orientation_limit,
+                                        -linear_velocity_limit,
+                                        -angular_velocity_limit,
+                                        foot_contact_limit_low,
+                                        cpg_amplitude_limit_low,
+                                        cpg_phase_limit_low,
+                                        -cpg_amplitude_derivative_limit,
+                                        -cpg_phase_derivative_limit)) + OBSERVATION_EPS
+
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -241,9 +273,14 @@ class QuadrupedGymEnv(gym.Env):
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
     elif self._observation_space_mode == "LR_COURSE_OBS":                           #[TODO]
-      self._observation = np.concatenate((self.robot.GetMotorAngles(), 
-                                          self.robot.GetMotorVelocities(),
-                                          self.robot.GetBaseOrientation() ))
+      self._observation = np.concatenate((self.robot.GetBaseOrientation(),          # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
+                                          self.robot.GetBaseLinearVelocity(),
+                                          self.robot.GetBaseAngularVelocity(),
+                                          self.robot.GetContactInfo(),
+                                          self._cpg.get_r(),                         # CPG amplitude for each foot
+                                          self._cpg.get_theta(),                     # CPG phase for each foot
+                                          self._cpg.get_dr(),                        # Amplitude derivatives for each foot
+                                          self._cpg.get_dtheta()))                   # Phase derivatives for each foot 
 
     else:
       raise ValueError("observation space not defined or not intended")
