@@ -240,11 +240,10 @@ class QuadrupedGymEnv(gym.Env):
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
-    elif self._observation_space_mode == "LR_COURSE_OBS":
-      # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
-      # if using the CPG, you can include states with self._cpg.get_r(), for example
-      # 50 is arbitrary
-      self._observation = np.zeros(50)
+    elif self._observation_space_mode == "LR_COURSE_OBS":                           #[TODO]
+      self._observation = np.concatenate((self.robot.GetMotorAngles(), 
+                                          self.robot.GetMotorVelocities(),
+                                          self.robot.GetBaseOrientation() ))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -286,6 +285,7 @@ class QuadrupedGymEnv(gym.Env):
 
   def _reward_fwd_locomotion(self, des_vel_x=None):
     """Learn forward locomotion"""
+    # [TODO] modify gains
     vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0)
     # If you want to track a desired velocity 
     # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
@@ -333,7 +333,7 @@ class QuadrupedGymEnv(gym.Env):
 
     # minimize distance to goal (we want to move towards the goal)
     dist_reward = 10 * ( self._prev_pos_to_goal - curr_dist_to_goal)
-    # minimize yaw deviation to goal (necessary?)
+    # minimize yaw deviation to goal (necessary?)                                       #[TODO]
     yaw_reward = 0 # -0.01 * np.abs(angle) 
 
     # minimize energy 
@@ -407,15 +407,17 @@ class QuadrupedGymEnv(gym.Env):
     action = np.zeros(12)
     for i in range(4):
       # get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
-      # [TODO]
+      J, current_position = self.ComputeJacobianAndPosition(i)
       # desired foot position i (from RL above)
-      Pd = np.zeros(3) # [TODO]
+      Pd = des_foot_pos[3 * i : 3 * i + 3]
       # desired foot velocity i
       vd = np.zeros(3) 
       # foot velocity in leg frame i (Equation 2)
-      # [TODO]
+      v = J @ qd[3 * i : 3 * i + 3]
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.zeros(3) # [TODO]
+      pos_error = Pd - current_position
+      vel_error = vd - v
+      tau = J.T @ (kpCartesian * pos_error + kdCartesian * vel_error)
 
       action[3*i:3*i+3] = tau
 
@@ -443,6 +445,9 @@ class QuadrupedGymEnv(gym.Env):
     # get motor kp and kd gains (can be modified)
     kp = self._robot_config.MOTOR_KP # careful of size!
     kd = self._robot_config.MOTOR_KD
+    kp_cartesian = self._robot_config.kpCartesian
+    kd_cartesian = self._robot_config.kdCartesian
+
     # get current motor velocities
     q = self.robot.GetMotorAngles()
     dq = self.robot.GetMotorVelocities()
@@ -456,12 +461,21 @@ class QuadrupedGymEnv(gym.Env):
       z = zs[i]
 
       # call inverse kinematics to get corresponding joint angles
-      q_des = np.zeros(3) # [TODO]
+      q_des = self.robot.ComputeInverseKinematics(i, np.array([x,y,z]))
       # Add joint PD contribution to tau
-      tau = np.zeros(3) # [TODO] 
+      current_angles = q[3*i : 3*i + 3]
+      current_velocities = dq[3*i : 3*i + 3]
+      pos_error = q_des - current_angles
+      vel_error = -current_velocities
+      tau = kp*pos_error + kd*vel_error
 
-      # add Cartesian PD contribution (as you wish)
-      # tau +=
+      # Cartesian PD contribution   
+      J, current_foot_pos = self.robot.ComputeJacobianAndPosition(i)  
+      pos_error_cartesian = np.array([x, y, z]) - current_foot_pos  
+      vel_error_cartesian = np.zeros(3) - np.dot(J, current_velocities)
+      tau_cartesian = np.dot(J.T, kp_cartesian * pos_error_cartesian + kd_cartesian * vel_error_cartesian)
+
+      tau += tau_cartesian
 
       action[3*i:3*i+3] = tau
 
