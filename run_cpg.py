@@ -72,6 +72,7 @@ cpg = HopfNetwork(time_step=TIME_STEP)
 # cpg.use_RL = True #00FF00 调用强化学习测试
 cpg._set_gait("TROT") #00FF00 "TROT" "PACE" "BOUND" "WALK"
 
+
 TEST_STEPS = int(10 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 

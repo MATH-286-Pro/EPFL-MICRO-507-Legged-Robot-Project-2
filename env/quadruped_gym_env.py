@@ -30,6 +30,7 @@
 
 """This file implements the gym environment for a quadruped. """
 import os, inspect
+import sys #00FF00
 # so we can import files
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, currentdir)
@@ -349,7 +350,7 @@ class QuadrupedGymEnv(gym.Env):
     
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
-    # #0000FF TODO add your reward function. 
+    # #0000FF TODO add your reward function. 奖励函数
     return 0
 
   def _reward(self):
@@ -386,6 +387,7 @@ class QuadrupedGymEnv(gym.Env):
     new_a = lower_lim + 0.5 * (action + 1) * (upper_lim - lower_lim)
     return np.clip(new_a, lower_lim, upper_lim)
 
+  # 将 Action 映射到 笛卡尔坐标系
   def ScaleActionToCartesianPos(self,actions):
     """Scale RL action to Cartesian PD ranges. 
     Edit ranges, limits etc., but make sure to use Cartesian PD to compute the torques. 
@@ -396,26 +398,33 @@ class QuadrupedGymEnv(gym.Env):
     # [#0000FF TODO: edit (do you think these should these be increased? How limiting is this?)]
     scale_array = np.array([0.1, 0.05, 0.08]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
-    des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u
+    des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u #00FF00
 
     # get Cartesian kp and kd gains (can be modified)
     kpCartesian = self._robot_config.kpCartesian
     kdCartesian = self._robot_config.kdCartesian
     # get current motor velocities
-    qd = self.robot.GetMotorVelocities()
+    qd = self.robot.GetMotorVelocities()  #00FF00 
 
     action = np.zeros(12)
     for i in range(4):
-      # get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
-      # #0000FF TODO
-      # desired foot position i (from RL above)
-      Pd = np.zeros(3) # #0000FF TODO
-      # desired foot velocity i
-      vd = np.zeros(3) 
-      # foot velocity in leg frame i (Equation 2)
-      # #0000FF TODO
-      # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.zeros(3) # #0000FF TODO
+      # #0000FF TODO get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
+      J, real_p = self.robot.ComputeJacobianAndPosition(i)
+
+      # #0000FF TODO foot velocity in leg frame i (Equation 2)
+      real_v = J @ (qd[3*i:3*i+3])
+
+      # #0000FF TODO desired foot position i (from RL above)
+      # des_p = np.zeros(3) #00FF00 change name Pd to des_p
+      des_p = des_foot_pos[3*1:3*i+3]
+
+      # #0000FF TODO desired foot velocity i
+      des_v = np.zeros(3) #00FF00 change name vd to des_v
+      
+      # #0000FF TODO calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
+      # tau = np.zeros(3) 
+      tau = J.T @ (kpCartesian @ (des_p - real_p) + kdCartesian @ (des_v - real_v))
+
 
       action[3*i:3*i+3] = tau
 
@@ -444,8 +453,8 @@ class QuadrupedGymEnv(gym.Env):
     kp = self._robot_config.MOTOR_KP # careful of size!
     kd = self._robot_config.MOTOR_KD
     # get current motor velocities
-    q = self.robot.GetMotorAngles()
-    dq = self.robot.GetMotorVelocities()
+    q = self.robot.GetMotorAngles()       #00FF00 real_q  4 legs
+    dq = self.robot.GetMotorVelocities()  #00FF00 real_dq 4 legs
 
     action = np.zeros(12)
     # loop through each leg
@@ -455,13 +464,25 @@ class QuadrupedGymEnv(gym.Env):
       y = sideSign[i] * foot_y # careful of sign
       z = zs[i]
 
-      # call inverse kinematics to get corresponding joint angles
-      q_des = np.zeros(3) # #0000FF TODO
-      # Add joint PD contribution to tau
-      tau = np.zeros(3) # #0000FF TODO 
+      # #00FF00
+      J, _ = self.robot.ComputeJacobianAndPosition(i)
+      p_des = np.array([x,y,z])
 
-      # add Cartesian PD contribution (as you wish)
-      # tau +=
+      # #00FF00
+      q_real  = q[3*i:3*i+3]
+      dq_real = dq[3*i:3*i+3]
+
+      # #0000FF TODO call inverse kinematics to get corresponding joint angles
+      # q_des = np.zeros(3) 
+      q_des = np.linalg.inv(J) @ p_des
+
+      # #0000FF TODO Add joint PD contribution to tau
+      dq_des = np.zeros(3)
+      tau = np.zeros(3) 
+      tau += kp*(q_des - q_real) + kd*(dq_des - dq_real)
+
+      # #0000FF TODO Add Cartesian PD contribution (as you wish)
+      tau += 0 # 暂时不加 not adding cartesian now
 
       action[3*i:3*i+3] = tau
 
