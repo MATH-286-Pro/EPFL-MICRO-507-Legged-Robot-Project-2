@@ -172,7 +172,7 @@ class HopfNetwork():
     else:
       # RL uses amplitude to set max step length #00FF00 可变步长 Changeable step length
       r = np.clip(self.X[0,:],MU_LOW,MU_UPP) 
-      return -self._max_step_len_rl * (r - MU_LOW) * np.cos(self.X[1,:]), z
+      return -self._max_step_len_rl * (r - MU_LOW) * np.cos(self.X[1,:]), z # return all legs position 返回所有腿的位置信息
 
       
         
