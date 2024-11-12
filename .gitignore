@@ -7,3 +7,5 @@ test.py
 .vscode
 micro-507
 __pycache__
+
+log.txt
