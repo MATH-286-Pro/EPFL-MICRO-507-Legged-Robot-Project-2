@@ -103,8 +103,8 @@ TORQUE_LIMITS   = np.asarray( [33.5] * NUM_MOTORS )
 VELOCITY_LIMITS = np.asarray( [21.0] * NUM_MOTORS ) 
 
 # Sample Joint Gains
-MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS
-MOTOR_KD = [2.0, 2.0, 2.0] * NUM_LEGS
+MOTOR_KP = [100.0, 100.0, 100.0] * NUM_LEGS; MOTOR_KP = np.array(MOTOR_KP)  #00FF00 add to convert to array rather than list
+MOTOR_KD = [2.0, 2.0, 2.0] * NUM_LEGS      ; MOTOR_KD = np.array(MOTOR_KD)  #00FF00
 
 # MOTOR_KP = [55,55,55] * NUM_LEGS
 # MOTOR_KD = [0.8,0.8,0.8] * NUM_LEGS

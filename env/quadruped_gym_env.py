@@ -270,9 +270,11 @@ class QuadrupedGymEnv(gym.Env):
   def setupActionSpace(self):
     """ Set up action space for RL. """
     if   self._motor_control_mode in ["PD","TORQUE", "CARTESIAN_PD"]:  # 电机的工作模式，工作空间维度 = 12 (每条腿3个电机)
-      action_dim = 12
-    elif self._motor_control_mode in ["CPG"]:                          # 电机的工作模式，工作空间维度 = 8
-      action_dim = 8
+      action_dim = 12                                                  # Motor mode     workspace dimension = 12 (3 motors each leg)
+
+    elif self._motor_control_mode in ["CPG"]:                          # 电机的工作模式，工作空间维度 = 8  (每条腿末端只有 x z 两个自由度)
+      action_dim = 8                                                   # Motor mode     workspace dimension = 8 (2 DOF on x, direction each leg)
+
     else:
       raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
     action_high = np.array([1] * action_dim)
@@ -434,10 +436,13 @@ class QuadrupedGymEnv(gym.Env):
     if self._motor_control_mode == "PD":
       action = self._scale_helper(action, self._robot_config.LOWER_ANGLE_JOINT, self._robot_config.UPPER_ANGLE_JOINT)
       action = np.clip(action, self._robot_config.LOWER_ANGLE_JOINT, self._robot_config.UPPER_ANGLE_JOINT)
+
     elif self._motor_control_mode == "CARTESIAN_PD":
-      action = self.ScaleActionToCartesianPos(action)
+      action = self.ScaleActionToCartesianPos(action)         # 使用 ScaleActionToCartesianPos 电机控制函数        #05FF90
+                                                              # use ScaleActionToCartesianPos motor control function
     elif self._motor_control_mode == "CPG":
-      action = self.ScaleActionToCPGStateModulations(action)
+      action = self.ScaleActionToCPGStateModulations(action)  # 使用 ScaleActionToCPGStateModulations 电机控制函数 #05FF90
+                                                              # use ScaleActionToCPGStateModulations motor control function
     else:
       raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
     return action
@@ -447,7 +452,9 @@ class QuadrupedGymEnv(gym.Env):
     new_a = lower_lim + 0.5 * (action + 1) * (upper_lim - lower_lim)
     return np.clip(new_a, lower_lim, upper_lim)
 
-  # 将 Action 映射到 笛卡尔坐标系
+  # #05FF90
+  # "CARTESIAN_PD" 的电机控制函数，强化学习=学习脚的位置
+  # Motor control function for "CARTESIAN_PD"
   def ScaleActionToCartesianPos(self,actions):
     """Scale RL action to Cartesian PD ranges. 
     Edit ranges, limits etc., but make sure to use Cartesian PD to compute the torques. 
@@ -458,13 +465,13 @@ class QuadrupedGymEnv(gym.Env):
     # [#0000FF TODO: edit (do you think these should these be increased? How limiting is this?)]
     scale_array = np.array([0.1, 0.05, 0.08]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
-    des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u #00FF00
+    des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u #00FF00 desire_foot_position 足目标位置
 
     # get Cartesian kp and kd gains (can be modified)
     kpCartesian = self._robot_config.kpCartesian
     kdCartesian = self._robot_config.kdCartesian
     # get current motor velocities
-    qd = self.robot.GetMotorVelocities()  #00FF00 
+    qd = self.robot.GetMotorVelocities()  #00FF00 Current_joint_angles 当前关节电机角度
 
     action = np.zeros(12)
     for i in range(4):
@@ -474,12 +481,11 @@ class QuadrupedGymEnv(gym.Env):
       # #0000FF TODO foot velocity in leg frame i (Equation 2)
       v_real = J @ (qd[3*i:3*i+3])
 
-      # #0000FF TODO desired foot position i (from RL above)
-      # des_p = np.zeros(3) #00FF00 change name Pd to des_p
-      p_des = des_foot_pos[3*1:3*i+3]
+      # #0000FF TODO desired foot position i (from RL above) (从强化学习来)
+      p_des = des_foot_pos[3*i:3*i+3]
 
       # #0000FF TODO desired foot velocity i
-      v_des = np.zeros(3)   #00FF00 change name vd to des_v
+      v_des = np.zeros(3)
       
       # #0000FF TODO calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       # tau = np.zeros(3) 
@@ -490,6 +496,9 @@ class QuadrupedGymEnv(gym.Env):
 
     return action
 
+  #05FF90
+  # "CPG" 的电机控制函数 
+  # Motor control function for "CPG"
   def ScaleActionToCPGStateModulations(self,actions):
     """Scale RL action to CPG modulation parameters."""
     # clip RL actions to be between -1 and 1 (standard RL technique)
@@ -532,25 +541,29 @@ class QuadrupedGymEnv(gym.Env):
       p_des  = np.array([x,y,z])                           # target position of ONE leg
 
       # #00FF00
-      q_real  = q[3*i:3*i+3]                               # real angle of ONE leg
-      w_real = dq[3*i:3*i+3]                               # real angule v of ONE leg
+      group_indices = np.arange(3*i, 3*i+3)
+      q_real  = q[group_indices]                               # real angle of ONE leg
+      w_real = dq[group_indices]                               # real angule v of ONE leg
       
       v_des = np.zeros(3)                                  # target velocity of ONE leg
       v_real = J @ w_real
 
       # #0000FF TODO call inverse kinematics to get corresponding joint angles
-      # q_des = np.zeros(3) 
       q_des = np.linalg.inv(J) @ p_des
 
       # #0000FF TODO Add joint PD contribution to tau
       w_des = np.zeros(3)
       tau = np.zeros(3) 
-      tau += kp*(q_des - q_real) + kd*(w_des - w_real)
+
+      # #00FF00 截取 PID Kp Kd 参数，注意 kp kd 是一个 12维的list，记录了所有电机的PD参数
+      # #00FF00 Pick PID kp kd paramter, attention kp kd are 12 dimension list, which record all motors PD parameter 
+
+      tau += kp[group_indices]*(q_des - q_real) + kd[group_indices]*(w_des - w_real)  # 这里 kp kd 是 list
 
       # #0000FF TODO Add Cartesian PD contribution (as you wish)
       tau += J.T @ (kp_cartesian @ (p_des - p_real) + kd_cartesian @ (v_des - v_real))
 
-      action[3*i:3*i+3] = tau
+      action[group_indices] = tau
 
     return action
 
@@ -1048,7 +1061,7 @@ class QuadrupedGymEnv(gym.Env):
 def test_env():
   env = QuadrupedGymEnv(render=True, 
                         on_rack=False,                  # 是否被挂起 Is robot hang up  # Original is True
-                        motor_control_mode='PD',
+                        motor_control_mode='CPG',       # 电机模式 Original is PD
                         action_repeat=100,
                         )
 
