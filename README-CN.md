@@ -31,6 +31,8 @@
 - **涉及知识点**
   - CPG 中央模式发生器
   - Deep RL 深度强化学习
+- `quadruped_gym_env.py`
+  - 定义强化学习环境
 
 
 ## 3.任务说明
@@ -39,10 +41,10 @@
   - 完成 `run_cpg.py` 的 joint space + cartesian space 的 PD 控制器
   - 运行 `run_cpg.py` 文件，查看效果
 - **run_sb3.py & load_sb3.py**
-  - 这两个文件提供了基于 stable-baselines3 的强化学习算法训练接口
-  - 你需要仔细阅读文档以了解不同算法和训练超参数
-  - 当然，你也可以使用其他强化学习库
   - 完成 `quadruped_gym_env.py`
+    - 可以直接运行 `quadruped_gym_env.py` 查看效果
+  - 使用 `run_sb3.py` 训练模型，默认训练 100万步，可以接着上次继续训练
+  - 使用 `load_sb3.py` 查看训练结果
 
 
 ## 4.测试日志

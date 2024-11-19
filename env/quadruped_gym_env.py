@@ -200,22 +200,33 @@ class QuadrupedGymEnv(gym.Env):
     self._cpg = HopfNetwork(use_RL=True)
 
   ######################################################################################
-  # RL Observation and Action spaces 
+  # RL Observation and Action spaces  观测空间 + 行为空间
   ######################################################################################
-  def setupObservationSpace(self):
-    """Set up observation space for RL. """
-    if self._observation_space_mode == "DEFAULT":
+
+  #00FF00   观测空间 - 上下界设置   #00FF00
+  def setupObservationSpace(self):                        
+    """Set up observation space for RL."""
+    """设定观测空间的上下界，超过范围就不会给 agent 训练"""
+
+    # 默认观测空间模式
+    # Defualt Observation Mode
+    if self._observation_space_mode == "DEFAULT":         
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4))) -  OBSERVATION_EPS)
-    elif self._observation_space_mode == "LR_COURSE_OBS":
+    
+    # 自制观测空间模式 (增加CPG)
+    # DIY Observation Mode (Add CPG)
+    elif self._observation_space_mode == "LR_COURSE_OBS": 
       # #0000FF TODO Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # if using CPG-RL, remember to include limits on these
       
+      # Standard bound
+      # 标准边界
       orientation_limit = np.array([1.0, 1.0, 1.0, 1.0])  # Quaternion
       linear_velocity_limit = np.array([5.0, 1.0, 5.0])   # Max linear velocity in m/s
       angular_velocity_limit = np.array([10.0, 10.0, 10.0])  # Max angular velocity in rad/s
@@ -223,6 +234,7 @@ class QuadrupedGymEnv(gym.Env):
       foot_contact_limit_low = np.array([0.0] * 4)
       
       # CPG state limits
+      # CPG 边界
       cpg_amplitude_limit_upp = np.array([MU_UPP] * 4)  # Upper limit based on CPG amplitude range
       cpg_amplitude_limit_low = np.array([MU_LOW] * 4)  # lower limit based on CPG amplitude range
       cpg_phase_limit_upp = np.array([2 * np.pi] * 4)   # Phase ranges from 0 to 2π
@@ -231,6 +243,7 @@ class QuadrupedGymEnv(gym.Env):
       cpg_phase_derivative_limit = np.array([5.0] * 4)  # Rate limit for phase change
 
       # Concatenate all high and low bounds
+      # 使用上面的参数，构建上下界
       observation_high = np.concatenate((orientation_limit,
                                          linear_velocity_limit,
                                          angular_velocity_limit,
@@ -256,9 +269,9 @@ class QuadrupedGymEnv(gym.Env):
 
   def setupActionSpace(self):
     """ Set up action space for RL. """
-    if self._motor_control_mode in ["PD","TORQUE", "CARTESIAN_PD"]:
+    if   self._motor_control_mode in ["PD","TORQUE", "CARTESIAN_PD"]:  # 电机的工作模式，工作空间维度 = 12 (每条腿3个电机)
       action_dim = 12
-    elif self._motor_control_mode in ["CPG"]:
+    elif self._motor_control_mode in ["CPG"]:                          # 电机的工作模式，工作空间维度 = 8
       action_dim = 8
     else:
       raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
@@ -266,15 +279,15 @@ class QuadrupedGymEnv(gym.Env):
     self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
     self._action_dim = action_dim
 
-
+  # 获取观测数据 (超过边界的数据不会被获取)
   def _get_observation(self):
     """Get observation, depending on obs space selected. """
     if self._observation_space_mode == "DEFAULT":
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
-    elif self._observation_space_mode == "LR_COURSE_OBS":                           #[TODO]
-      self._observation = np.concatenate((self.robot.GetBaseOrientation(),          # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
+    elif self._observation_space_mode == "LR_COURSE_OBS":                            # #0000FF TODO
+      self._observation = np.concatenate((self.robot.GetBaseOrientation(),           # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
                                           self.robot.GetBaseLinearVelocity(),
                                           self.robot.GetBaseAngularVelocity(),
                                           self.robot.GetContactInfo(),
@@ -282,6 +295,7 @@ class QuadrupedGymEnv(gym.Env):
                                           self._cpg.get_theta(),                     # CPG phase for each foot
                                           self._cpg.get_dr(),                        # Amplitude derivatives for each foot
                                           self._cpg.get_dtheta()))                   # Phase derivatives for each foot 
+      
       # #0000FF TODO Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
@@ -301,7 +315,7 @@ class QuadrupedGymEnv(gym.Env):
     return observation
 
   ######################################################################################
-  # Termination and reward
+  # Termination and reward   终止情况 + 奖励函数
   ######################################################################################
   def is_fallen(self,dot_prod_min=0.85):
     """Decide whether the quadruped has fallen.
@@ -369,7 +383,7 @@ class QuadrupedGymEnv(gym.Env):
     return dist_to_goal, angle
   
   #00FF00 奖励函数1
-  #00FF00 First Reward Function
+  #00FF00 Reward Function 1
   def _reward_flag_run(self):
     """ Learn to move towards goal location. """
     curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
@@ -397,9 +411,11 @@ class QuadrupedGymEnv(gym.Env):
     # #0000FF TODO add your reward function. 奖励函数
     return 0
 
+  # 不同任务选择
+  # Different Task Selection
   def _reward(self):
     """ Get reward depending on task"""
-    if self._TASK_ENV == "FWD_LOCOMOTION":
+    if   self._TASK_ENV == "FWD_LOCOMOTION":
       return self._reward_fwd_locomotion()
     elif self._TASK_ENV == "LR_COURSE_TASK":
       return self._reward_lr_course()
@@ -577,7 +593,7 @@ class QuadrupedGymEnv(gym.Env):
     return np.array(self._noisy_observation()), reward, done, {'base_pos': self.robot.GetBasePosition()} 
 
   ######################################################################################
-  # Reset
+  # Reset 重置
   ######################################################################################
   def reset(self):
     """ Set up simulation environment. """
@@ -1027,9 +1043,11 @@ class QuadrupedGymEnv(gym.Env):
       self._pybullet_client.setCollisionFilterPair(quad_ID,base_block_ID, i,-1, 0)
 
 
+# 定义测试环境
+# Define Test Environment
 def test_env():
   env = QuadrupedGymEnv(render=True, 
-                        on_rack=True,
+                        on_rack=False,                  # 是否被挂起 Is robot hang up  # Original is True
                         motor_control_mode='PD',
                         action_repeat=100,
                         )
@@ -1045,7 +1063,8 @@ def test_env():
     obs, reward, done, info = env.step(action)
 
 
+# 测试函数
+# test out some functionalities
 if __name__ == "__main__":
-  # test out some functionalities
   test_env()
   sys.exit()
