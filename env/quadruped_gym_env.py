@@ -120,7 +120,7 @@ class QuadrupedGymEnv(gym.Env):
       isRLGymInterface=True,
       time_step=0.001,
       action_repeat=10,  
-      motor_control_mode="PD",
+      motor_control_mode="CPG",
       task_env="FWD_LOCOMOTION",
       observation_space_mode="DEFAULT",
       on_rack=False,
@@ -224,6 +224,7 @@ class QuadrupedGymEnv(gym.Env):
       # #0000FF TODO Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # if using CPG-RL, remember to include limits on these
+
       
       # Standard bound
       # 标准边界
@@ -262,6 +263,7 @@ class QuadrupedGymEnv(gym.Env):
                                         -cpg_amplitude_derivative_limit,
                                         -cpg_phase_derivative_limit)) + OBSERVATION_EPS
 
+
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -288,6 +290,7 @@ class QuadrupedGymEnv(gym.Env):
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
+
     elif self._observation_space_mode == "LR_COURSE_OBS":                            # #0000FF TODO
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),           # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
                                           self.robot.GetBaseLinearVelocity(),
@@ -298,9 +301,11 @@ class QuadrupedGymEnv(gym.Env):
                                           self._cpg.get_dr(),                        # Amplitude derivatives for each foot
                                           self._cpg.get_dtheta()))                   # Phase derivatives for each foot 
       
+
       # #0000FF TODO Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
+      self._observation = np.zeros(50)
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -342,8 +347,7 @@ class QuadrupedGymEnv(gym.Env):
 
   def _reward_fwd_locomotion(self, des_vel_x=None):
     """Learn forward locomotion"""
-    # [TODO] modify gains
-    vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0)
+    vel_tracking_reward = 0.01 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
     # If you want to track a desired velocity 
     # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
     # minimize yaw (go straight)
@@ -392,7 +396,9 @@ class QuadrupedGymEnv(gym.Env):
 
     # minimize distance to goal (we want to move towards the goal)
     dist_reward = 10 * ( self._prev_pos_to_goal - curr_dist_to_goal)
+
     # minimize yaw deviation to goal (necessary?)                                       #0000FF TODO
+
     yaw_reward = 0 # -0.01 * np.abs(angle) 
 
     # minimize energy 
@@ -481,8 +487,10 @@ class QuadrupedGymEnv(gym.Env):
       # #0000FF TODO foot velocity in leg frame i (Equation 2)
       v_real = J @ (qd[3*i:3*i+3])
 
+
       # #0000FF TODO desired foot position i (from RL above) (从强化学习来)
       p_des = des_foot_pos[3*i:3*i+3]
+
 
       # #0000FF TODO desired foot velocity i
       v_des = np.zeros(3)
@@ -521,9 +529,6 @@ class QuadrupedGymEnv(gym.Env):
     # get motor kp and kd gains (can be modified)
     kp = self._robot_config.MOTOR_KP # careful of size!
     kd = self._robot_config.MOTOR_KD
-    kp_cartesian = self._robot_config.kpCartesian
-    kd_cartesian = self._robot_config.kdCartesian
-
     # get current motor velocities
     q = self.robot.GetMotorAngles()       #00FF00 real_q  4 legs
     dq = self.robot.GetMotorVelocities()  #00FF00 real_dq 4 legs
@@ -555,10 +560,13 @@ class QuadrupedGymEnv(gym.Env):
       w_des = np.zeros(3)
       tau = np.zeros(3) 
 
+
       # #00FF00 截取 PID Kp Kd 参数，注意 kp kd 是一个 12维的list，记录了所有电机的PD参数
       # #00FF00 Pick PID kp kd paramter, attention kp kd are 12 dimension list, which record all motors PD parameter 
 
       tau += kp[group_indices]*(q_des - q_real) + kd[group_indices]*(w_des - w_real)  # 这里 kp kd 是 list
+     # tau += kp[:3]*(q_des - q_real) + kd[:3]*(dq_des - dq_real)
+
 
       # #0000FF TODO Add Cartesian PD contribution (as you wish)
       tau += J.T @ (kp_cartesian @ (p_des - p_real) + kd_cartesian @ (v_des - v_real))
