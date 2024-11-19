@@ -347,7 +347,7 @@ class QuadrupedGymEnv(gym.Env):
 
   def _reward_fwd_locomotion(self, des_vel_x=None):
     """Learn forward locomotion"""
-    vel_tracking_reward = 0.01 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
+    vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
     # If you want to track a desired velocity 
     # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
     # minimize yaw (go straight)
@@ -529,6 +529,8 @@ class QuadrupedGymEnv(gym.Env):
     # get motor kp and kd gains (can be modified)
     kp = self._robot_config.MOTOR_KP # careful of size!
     kd = self._robot_config.MOTOR_KD
+    kp_cartesian = self._robot_config.kpCartesian
+    kd_cartesian = self._robot_config.kdCartesian
     # get current motor velocities
     q = self.robot.GetMotorAngles()       #00FF00 real_q  4 legs
     dq = self.robot.GetMotorVelocities()  #00FF00 real_dq 4 legs
