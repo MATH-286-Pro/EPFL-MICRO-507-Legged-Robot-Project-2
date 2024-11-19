@@ -273,10 +273,12 @@ class HopfNetwork():
       r, theta = X[:,i]
       # #0000FF TODO amplitude (use mu from RL, i.e. self._mu_rl[i])
       # r_dot = 0 
-      r_dot = self._mu_rl[i]
+      # r_dot = self._mu_rl[i] #F0F000 changed! what should be the right r_dot???
+      r_dot = self._alpha * (self._mu_rl[i] - r**2) * r
       # #0000FF TODO phase (use omega from RL, i.e. self._omega_rl[i])
       # theta_dot = 0 
       theta_dot = self._omega_rl[i]
+
 
       X_dot[:,i] = [r_dot, theta_dot]
 
