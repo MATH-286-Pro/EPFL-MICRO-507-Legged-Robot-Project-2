@@ -295,17 +295,18 @@ class QuadrupedGymEnv(gym.Env):
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),           # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
                                           self.robot.GetBaseLinearVelocity(),
                                           self.robot.GetBaseAngularVelocity(),
-                                          self.robot.GetContactInfo(),
+                                          self.robot.GetContactInfo()[3], #FF0000 Wrong! The contact info is a tuple with the first two elements scalars and the last two lists, making the concatenation failed. 
+                                                                                  # for now it returns boolean for each foot in contact (1) or not (0)
                                           self._cpg.get_r(),                         # CPG amplitude for each foot
                                           self._cpg.get_theta(),                     # CPG phase for each foot
                                           self._cpg.get_dr(),                        # Amplitude derivatives for each foot
-                                          self._cpg.get_dtheta()))                   # Phase derivatives for each foot 
+                                          self._cpg.get_dtheta()), axis=None)                   # Phase derivatives for each foot 
       
 
       # #0000FF TODO Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
-      self._observation = np.zeros(50)
+      # self._observation = np.zeros(50)
 
     else:
       raise ValueError("observation space not defined or not intended")
