@@ -172,7 +172,7 @@ class HopfNetwork():
     else:
       # RL uses amplitude to set max step length #00FF00 可变步长 Changeable step length
       r = np.clip(self.X[0,:],MU_LOW,MU_UPP) 
-      return -self._max_step_len_rl * (r - MU_LOW) * np.cos(self.X[1,:]), z
+      return -self._max_step_len_rl * (r - MU_LOW) * np.cos(self.X[1,:]), z # return all legs position 返回所有腿的位置信息
 
       
         
@@ -273,8 +273,10 @@ class HopfNetwork():
       r, theta = X[:,i]
       # #0000FF TODO amplitude (use mu from RL, i.e. self._mu_rl[i])
       # r_dot = 0 
+
       # r_dot = self._mu_rl[i] #F0F000 changed! what should be the right r_dot???
       r_dot = self._alpha * (self._mu_rl[i] - r**2) * r
+
       # #0000FF TODO phase (use omega from RL, i.e. self._omega_rl[i])
       # theta_dot = 0 
       theta_dot = self._omega_rl[i]
