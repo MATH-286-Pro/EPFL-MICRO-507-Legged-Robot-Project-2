@@ -46,18 +46,16 @@ from env.quadruped_gym_env import QuadrupedGymEnv
 
 
 LEARNING_ALG = "PPO" # or "SAC"
-LOAD_NN = False # if you want to initialize training with a previous model 
+LOAD_NN = False # if you want to initialize training with a previous model  #00FF00 继续上次训练 continue last traning
 NUM_ENVS = 1    # how many pybullet environments to create for data collection
-USE_GPU = False # make sure to install all necessary drivers 
+USE_GPU = True # make sure to install all necessary drivers 
 
 LEARNING_ALG = "SAC";  USE_GPU = True
 # after implementing, you will want to test how well the agent learns with your MDP: 
-# env_configs = {"motor_control_mode":"CPG",
-#                "task_env": "FWD_LOCOMOTION", #  "LR_COURSE_<TASK",
-#                "observation_space_mode": "LR_COURSE_OBS"}
 env_configs = {"motor_control_mode":"CPG",
-               "task_env": "FWD_LOCOMOTION",
+               "task_env": "FWD_LOCOMOTION", #  "LR_COURSE_TASK",
                "observation_space_mode": "LR_COURSE_OBS"}
+# env_configs = {}
 
 if USE_GPU and LEARNING_ALG=="SAC":
     gpu_arg = "auto" 
@@ -66,7 +64,7 @@ else:
 
 if LOAD_NN:
     interm_dir = "./logs/intermediate_models/"
-    log_dir = interm_dir + '' # add path
+    log_dir = interm_dir + ''                           # add path #00FF00 继续上次训练 continue last traning
     stats_path = os.path.join(log_dir, "vec_normalize.pkl")
     model_name = get_latest_model(log_dir)
 
@@ -78,7 +76,7 @@ checkpoint_callback = CheckpointCallback(save_freq=30000, save_path=SAVE_PATH,na
 # create Vectorized gym environment
 env = lambda: QuadrupedGymEnv(**env_configs)  
 env = make_vec_env(env, monitor_dir=SAVE_PATH,n_envs=NUM_ENVS)
-# normalize observations to stabilize learning (why?)
+# normalize observations to stabilize learning (why?) # [NOTE]
 env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=100.)
 
 if LOAD_NN:
@@ -139,7 +137,9 @@ if LOAD_NN:
     print("\nLoaded model", model_name, "\n")
 
 # Learn and save (may need to train for longer)
-model.learn(total_timesteps=1000000, log_interval=1,callback=checkpoint_callback)
+
+model.learn(total_timesteps=1000000, log_interval=1,callback=checkpoint_callback) #00FF00 最大训练步长
+
 # Don't forget to save the VecNormalize statistics when saving the agent
 model.save( os.path.join(SAVE_PATH, "rl_model" ) ) 
 env.save(os.path.join(SAVE_PATH, "vec_normalize.pkl" )) 

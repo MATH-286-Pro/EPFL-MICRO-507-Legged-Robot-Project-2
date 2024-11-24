@@ -120,7 +120,7 @@ class QuadrupedGymEnv(gym.Env):
       isRLGymInterface=True,
       time_step=0.001,
       action_repeat=10,  
-      motor_control_mode="PD",
+      motor_control_mode="CPG",
       task_env="FWD_LOCOMOTION",
       observation_space_mode="DEFAULT",
       on_rack=False,
@@ -200,22 +200,34 @@ class QuadrupedGymEnv(gym.Env):
     self._cpg = HopfNetwork(use_RL=True)
 
   ######################################################################################
-  # RL Observation and Action spaces 
+  # RL Observation and Action spaces  观测空间 + 行为空间
   ######################################################################################
-  def setupObservationSpace(self):
-    """Set up observation space for RL. """
-    if self._observation_space_mode == "DEFAULT":
+
+  #00FF00   观测空间 - 上下界设置   #00FF00
+  def setupObservationSpace(self):                        
+    """Set up observation space for RL."""
+    """设定观测空间的上下界，超过范围就不会给 agent 训练"""
+
+    # 默认观测空间模式
+    # Defualt Observation Mode
+    if self._observation_space_mode == "DEFAULT":         
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4))) -  OBSERVATION_EPS)
-    elif self._observation_space_mode == "LR_COURSE_OBS":
+    
+    # 自制观测空间模式 (增加CPG)
+    # DIY Observation Mode (Add CPG)
+    elif self._observation_space_mode == "LR_COURSE_OBS": 
       # #0000FF TODO Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # if using CPG-RL, remember to include limits on these
+
       
+      # Standard bound
+      # 标准边界
       orientation_limit = np.array([1.0, 1.0, 1.0, 1.0])  # Quaternion
       linear_velocity_limit = np.array([5.0, 1.0, 5.0])   # Max linear velocity in m/s
       angular_velocity_limit = np.array([10.0, 10.0, 10.0])  # Max angular velocity in rad/s
@@ -223,6 +235,7 @@ class QuadrupedGymEnv(gym.Env):
       foot_contact_limit_low = np.array([0.0] * 4)
       
       # CPG state limits
+      # CPG 边界
       cpg_amplitude_limit_upp = np.array([MU_UPP] * 4)  # Upper limit based on CPG amplitude range
       cpg_amplitude_limit_low = np.array([MU_LOW] * 4)  # lower limit based on CPG amplitude range
       cpg_phase_limit_upp = np.array([2 * np.pi] * 4)   # Phase ranges from 0 to 2π
@@ -231,6 +244,7 @@ class QuadrupedGymEnv(gym.Env):
       cpg_phase_derivative_limit = np.array([5.0] * 4)  # Rate limit for phase change
 
       # Concatenate all high and low bounds
+      # 使用上面的参数，构建上下界
       observation_high = np.concatenate((orientation_limit,
                                          linear_velocity_limit,
                                          angular_velocity_limit,
@@ -249,6 +263,7 @@ class QuadrupedGymEnv(gym.Env):
                                         -cpg_amplitude_derivative_limit,
                                         -cpg_phase_derivative_limit)) + OBSERVATION_EPS
 
+
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -256,35 +271,42 @@ class QuadrupedGymEnv(gym.Env):
 
   def setupActionSpace(self):
     """ Set up action space for RL. """
-    if self._motor_control_mode in ["PD","TORQUE", "CARTESIAN_PD"]:
-      action_dim = 12
-    elif self._motor_control_mode in ["CPG"]:
-      action_dim = 8
+    if   self._motor_control_mode in ["PD","TORQUE", "CARTESIAN_PD"]:  # 电机的工作模式，工作空间维度 = 12 (每条腿3个电机)
+      action_dim = 12                                                  # Motor mode     workspace dimension = 12 (3 motors each leg)
+
+    elif self._motor_control_mode in ["CPG"]:                          # 电机的工作模式，工作空间维度 = 8  (每条腿末端只有 x z 两个自由度)
+      action_dim = 8                                                   # Motor mode     workspace dimension = 8 (2 DOF on x, direction each leg)
+
     else:
       raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
     action_high = np.array([1] * action_dim)
     self.action_space = spaces.Box(-action_high, action_high, dtype=np.float32)
     self._action_dim = action_dim
 
-
+  # 获取观测数据 (超过边界的数据不会被获取)
   def _get_observation(self):
     """Get observation, depending on obs space selected. """
     if self._observation_space_mode == "DEFAULT":
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
-    elif self._observation_space_mode == "LR_COURSE_OBS":                           #[TODO]
-      self._observation = np.concatenate((self.robot.GetBaseOrientation(),          # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
+
+    elif self._observation_space_mode == "LR_COURSE_OBS":                            # #0000FF TODO
+      self._observation = np.concatenate((self.robot.GetBaseOrientation(),           # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
                                           self.robot.GetBaseLinearVelocity(),
                                           self.robot.GetBaseAngularVelocity(),
-                                          self.robot.GetContactInfo(),
+                                          self.robot.GetContactInfo()[3], #FF0000 Wrong! The contact info is a tuple with the first two elements scalars and the last two lists, making the concatenation failed. 
+                                                                                  # for now it returns boolean for each foot in contact (1) or not (0)
                                           self._cpg.get_r(),                         # CPG amplitude for each foot
                                           self._cpg.get_theta(),                     # CPG phase for each foot
                                           self._cpg.get_dr(),                        # Amplitude derivatives for each foot
-                                          self._cpg.get_dtheta()))                   # Phase derivatives for each foot 
+                                          self._cpg.get_dtheta()), axis=None)                   # Phase derivatives for each foot 
+      
+
       # #0000FF TODO Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
+      # self._observation = np.zeros(50)
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -301,7 +323,7 @@ class QuadrupedGymEnv(gym.Env):
     return observation
 
   ######################################################################################
-  # Termination and reward
+  # Termination and reward   终止情况 + 奖励函数
   ######################################################################################
   def is_fallen(self,dot_prod_min=0.85):
     """Decide whether the quadruped has fallen.
@@ -326,8 +348,7 @@ class QuadrupedGymEnv(gym.Env):
 
   def _reward_fwd_locomotion(self, des_vel_x=None):
     """Learn forward locomotion"""
-    # [TODO] modify gains
-    vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0)
+    vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
     # If you want to track a desired velocity 
     # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
     # minimize yaw (go straight)
@@ -368,13 +389,17 @@ class QuadrupedGymEnv(gym.Env):
 
     return dist_to_goal, angle
   
+  #00FF00 奖励函数1
+  #00FF00 Reward Function 1
   def _reward_flag_run(self):
     """ Learn to move towards goal location. """
     curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
 
     # minimize distance to goal (we want to move towards the goal)
     dist_reward = 10 * ( self._prev_pos_to_goal - curr_dist_to_goal)
-    # minimize yaw deviation to goal (necessary?)                                       #[TODO]
+
+    # minimize yaw deviation to goal (necessary?)                                       #0000FF TODO
+
     yaw_reward = 0 # -0.01 * np.abs(angle) 
 
     # minimize energy 
@@ -387,15 +412,19 @@ class QuadrupedGymEnv(gym.Env):
             - 0.001 * energy_reward 
     
     return max(reward,0) # keep rewards positive
-    
+  
+  #00FF00 自定义奖励函数
+  #00FF00 DIY reward Function
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
     # #0000FF TODO add your reward function. 奖励函数
     return 0
 
+  # 不同任务选择
+  # Different Task Selection
   def _reward(self):
     """ Get reward depending on task"""
-    if self._TASK_ENV == "FWD_LOCOMOTION":
+    if   self._TASK_ENV == "FWD_LOCOMOTION":
       return self._reward_fwd_locomotion()
     elif self._TASK_ENV == "LR_COURSE_TASK":
       return self._reward_lr_course()
@@ -414,10 +443,13 @@ class QuadrupedGymEnv(gym.Env):
     if self._motor_control_mode == "PD":
       action = self._scale_helper(action, self._robot_config.LOWER_ANGLE_JOINT, self._robot_config.UPPER_ANGLE_JOINT)
       action = np.clip(action, self._robot_config.LOWER_ANGLE_JOINT, self._robot_config.UPPER_ANGLE_JOINT)
+
     elif self._motor_control_mode == "CARTESIAN_PD":
-      action = self.ScaleActionToCartesianPos(action)
+      action = self.ScaleActionToCartesianPos(action)         # 使用 ScaleActionToCartesianPos 电机控制函数        #05FF90
+                                                              # use ScaleActionToCartesianPos motor control function
     elif self._motor_control_mode == "CPG":
-      action = self.ScaleActionToCPGStateModulations(action)
+      action = self.ScaleActionToCPGStateModulations(action)  # 使用 ScaleActionToCPGStateModulations 电机控制函数 #05FF90
+                                                              # use ScaleActionToCPGStateModulations motor control function
     else:
       raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
     return action
@@ -427,7 +459,9 @@ class QuadrupedGymEnv(gym.Env):
     new_a = lower_lim + 0.5 * (action + 1) * (upper_lim - lower_lim)
     return np.clip(new_a, lower_lim, upper_lim)
 
-  # 将 Action 映射到 笛卡尔坐标系
+  # #05FF90
+  # "CARTESIAN_PD" 的电机控制函数，强化学习=学习脚的位置
+  # Motor control function for "CARTESIAN_PD"
   def ScaleActionToCartesianPos(self,actions):
     """Scale RL action to Cartesian PD ranges. 
     Edit ranges, limits etc., but make sure to use Cartesian PD to compute the torques. 
@@ -439,38 +473,42 @@ class QuadrupedGymEnv(gym.Env):
     # scale_array = np.array([0.1, 0.05, 0.08]*4)
     scale_array = np.array([0.2, 0.1, 0.15]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
-    des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u #00FF00
+    des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u #00FF00 desire_foot_position 足目标位置
 
     # get Cartesian kp and kd gains (can be modified)
     kpCartesian = self._robot_config.kpCartesian
     kdCartesian = self._robot_config.kdCartesian
     # get current motor velocities
-    qd = self.robot.GetMotorVelocities()  #00FF00 
+    qd = self.robot.GetMotorVelocities()  #00FF00 Current_joint_angles 当前关节电机角度
 
     action = np.zeros(12)
     for i in range(4):
       # #0000FF TODO get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
-      J, real_p = self.robot.ComputeJacobianAndPosition(i)
+      J, p_real = self.robot.ComputeJacobianAndPosition(i)
 
       # #0000FF TODO foot velocity in leg frame i (Equation 2)
-      real_v = J @ (qd[3*i:3*i+3])
+      v_real = J @ (qd[3*i:3*i+3])
 
-      # #0000FF TODO desired foot position i (from RL above)
-      # des_p = np.zeros(3) #00FF00 change name Pd to des_p
-      des_p = des_foot_pos[3*1:3*i+3]
+
+      # #0000FF TODO desired foot position i (from RL above) (从强化学习来)
+      p_des = des_foot_pos[3*i:3*i+3]
+
 
       # #0000FF TODO desired foot velocity i
-      des_v = np.zeros(3) #00FF00 change name vd to des_v
+      v_des = np.zeros(3)
       
       # #0000FF TODO calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       # tau = np.zeros(3) 
-      tau = J.T @ (kpCartesian @ (des_p - real_p) + kdCartesian @ (des_v - real_v))
+      tau = J.T @ (kpCartesian @ (p_des - p_real) + kdCartesian @ (v_des - v_real))
 
 
       action[3*i:3*i+3] = tau
 
     return action
 
+  #05FF90
+  # "CPG" 的电机控制函数 
+  # Motor control function for "CPG"
   def ScaleActionToCPGStateModulations(self,actions):
     """Scale RL action to CPG modulation parameters."""
     # clip RL actions to be between -1 and 1 (standard RL technique)
@@ -495,7 +533,6 @@ class QuadrupedGymEnv(gym.Env):
     kd = self._robot_config.MOTOR_KD
     kp_cartesian = self._robot_config.kpCartesian
     kd_cartesian = self._robot_config.kdCartesian
-
     # get current motor velocities
     q = self.robot.GetMotorAngles()       #00FF00 real_q  4 legs
     dq = self.robot.GetMotorVelocities()  #00FF00 real_dq 4 legs
@@ -509,26 +546,36 @@ class QuadrupedGymEnv(gym.Env):
       z = zs[i]
 
       # #00FF00
-      J, _ = self.robot.ComputeJacobianAndPosition(i)
-      p_des = np.array([x,y,z])
+      J, p_real = self.robot.ComputeJacobianAndPosition(i) # real position of ONE leg
+      p_des  = np.array([x,y,z])                           # target position of ONE leg
 
       # #00FF00
-      q_real  = q[3*i:3*i+3]
-      dq_real = dq[3*i:3*i+3]
+      group_indices = np.arange(3*i, 3*i+3)
+      q_real  = q[group_indices]                               # real angle of ONE leg
+      w_real = dq[group_indices]                               # real angule v of ONE leg
+      
+      v_des = np.zeros(3)                                  # target velocity of ONE leg
+      v_real = J @ w_real
 
       # #0000FF TODO call inverse kinematics to get corresponding joint angles
-      # q_des = np.zeros(3) 
       q_des = np.linalg.inv(J) @ p_des
 
       # #0000FF TODO Add joint PD contribution to tau
-      dq_des = np.zeros(3)
+      w_des = np.zeros(3)
       tau = np.zeros(3) 
-      tau += kp*(q_des - q_real) + kd*(dq_des - dq_real)
+
+
+      # #00FF00 截取 PID Kp Kd 参数，注意 kp kd 是一个 12维的list，记录了所有电机的PD参数
+      # #00FF00 Pick PID kp kd paramter, attention kp kd are 12 dimension list, which record all motors PD parameter 
+
+      tau += kp[group_indices]*(q_des - q_real) + kd[group_indices]*(w_des - w_real)  # 这里 kp kd 是 list
+     # tau += kp[:3]*(q_des - q_real) + kd[:3]*(dq_des - dq_real)
+
 
       # #0000FF TODO Add Cartesian PD contribution (as you wish)
-      tau += 0 # 暂时不加 not adding cartesian now
+      tau += J.T @ (kp_cartesian @ (p_des - p_real) + kd_cartesian @ (v_des - v_real))
 
-      action[3*i:3*i+3] = tau
+      action[group_indices] = tau
 
     return action
 
@@ -571,7 +618,7 @@ class QuadrupedGymEnv(gym.Env):
     return np.array(self._noisy_observation()), reward, done, {'base_pos': self.robot.GetBasePosition()} 
 
   ######################################################################################
-  # Reset
+  # Reset 重置
   ######################################################################################
   def reset(self):
     """ Set up simulation environment. """
@@ -1021,10 +1068,12 @@ class QuadrupedGymEnv(gym.Env):
       self._pybullet_client.setCollisionFilterPair(quad_ID,base_block_ID, i,-1, 0)
 
 
+# 定义测试环境
+# Define Test Environment
 def test_env():
   env = QuadrupedGymEnv(render=True, 
-                        on_rack=True,
-                        motor_control_mode='PD',
+                        on_rack=False,                  # 是否被挂起 Is robot hang up  # Original is True
+                        motor_control_mode='CPG',       # 电机模式 Original is PD
                         action_repeat=100,
                         )
 
@@ -1039,7 +1088,8 @@ def test_env():
     obs, reward, done, info = env.step(action)
 
 
+# 测试函数
+# test out some functionalities
 if __name__ == "__main__":
-  # test out some functionalities
   test_env()
   sys.exit()
