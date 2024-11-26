@@ -62,7 +62,7 @@ class QuadrupedTrainer:
             "task_env": task_env,
             "observation_space_mode": observation_space_mode,
             "terrain": terrain,
-            "add_noise": add_noise，
+            "add_noise": add_noise,
         }
 
     def initialize_environment(self):
