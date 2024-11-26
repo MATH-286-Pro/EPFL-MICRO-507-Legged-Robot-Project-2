@@ -28,6 +28,12 @@
 #
 # Copyright (c) 2022 EPFL, Guillaume Bellegarda
 
+#6699CA should be constructed
+#00FF00 should be implemented
+#F99F00 questions
+#FF0000 errors
+#00FFFF changes or tuned parameters
+
 """This file implements the gym environment for a quadruped. """
 import os, inspect
 import sys #00FF00
@@ -205,7 +211,7 @@ class QuadrupedGymEnv(gym.Env):
 
   #00FF00   观测空间 - 上下界设置   #00FF00
   def setupObservationSpace(self):                        
-    """Set up observation space for RL."""
+    """Set up observation space for RL.""" #6699CA should be constructed
     """设定观测空间的上下界，超过范围就不会给 agent 训练"""
 
     # 默认观测空间模式
@@ -284,7 +290,7 @@ class QuadrupedGymEnv(gym.Env):
     self._action_dim = action_dim
 
   # 获取观测数据 (超过边界的数据不会被获取)
-  def _get_observation(self):
+  def _get_observation(self): #6699CA should be constructed
     """Get observation, depending on obs space selected. """
     if self._observation_space_mode == "DEFAULT":
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
@@ -294,7 +300,7 @@ class QuadrupedGymEnv(gym.Env):
     elif self._observation_space_mode == "LR_COURSE_OBS":                            # #0000FF TODO
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),           # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
                                           self.robot.GetBaseLinearVelocity(),
-                                          self.robot.GetBaseAngularVelocity(),
+                                          self.robot.GetBaseAngularVelocity(),  #F99F00 add joint state (angles and velocities)??
                                           self.robot.GetContactInfo()[3], #FF0000 Wrong! The contact info is a tuple with the first two elements scalars and the last two lists, making the concatenation failed. 
                                                                                   # for now it returns boolean for each foot in contact (1) or not (0)
                                           self._cpg.get_r(),                         # CPG amplitude for each foot
@@ -346,25 +352,39 @@ class QuadrupedGymEnv(gym.Env):
     """Decide whether we should stop the episode and reset the environment. """
     return self.is_fallen() 
 
-  def _reward_fwd_locomotion(self, des_vel_x=None):
+  def _reward_fwd_locomotion(self, des_vel_x=None): #6699CA should be constructed
     """Learn forward locomotion"""
-    vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
-    # If you want to track a desired velocity 
-    # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
-    # minimize yaw (go straight)
-    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
-    # don't drift laterally 
-    drift_reward = -0.01 * abs(self.robot.GetBasePosition()[1]) 
-    # minimize energy 
+    # vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
+    # # If you want to track a desired velocity 
+    # # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
+    # # minimize yaw (go straight)
+    # yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
+    # # don't drift laterally 
+    # drift_reward = -0.01 * abs(self.robot.GetBasePosition()[1]) 
+    # # minimize energy 
+    # energy_reward = 0 
+    # for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
+    #   energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
+
+    # reward = vel_tracking_reward \
+    #         + yaw_reward \
+    #         + drift_reward \
+    #         - 0.01 * energy_reward \
+    #         - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
+    #6699CA the following reward function is built based on ref[2] *Visual CPG-RL*
+    def rwd_act(x):
+      return np.exp(-x**2/0.25)
+    desired_vel = np.array([0.6, 0]) #00FF00 desired velocity in x and y directions. not sure about the specific value
+    #[NOTE] the paper gives a table (Table 2) about the random range of every desired value in the function. 
+    #       there I just set them as fixed for trials.
     energy_reward = 0 
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
-      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
-
-    reward = vel_tracking_reward \
-            + yaw_reward \
-            + drift_reward \
-            - 0.01 * energy_reward \
-            - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
+      energy_reward += np.abs(np.dot(tau,vel))
+    reward = np.sum(np.array([3,0.75])*self._time_step * rwd_act(self.robot.GetBaseLinearVelocity()[:2] - desired_vel)) \
+            + 0.5*self._time_step * rwd_act(self.robot.GetBaseOrientationRollPitchYaw()[2]) \
+            - 2*self._time_step * self.robot.GetBaseLinearVelocity()[2]**2 \
+            - 0.05*self._time_step * np.linalg.norm(self.robot.GetBaseAngularVelocity()[:2])**2 \
+            - 0.001*self._time_step * energy_reward      
 
     return max(reward,0) # keep rewards positive
 
@@ -557,7 +577,8 @@ class QuadrupedGymEnv(gym.Env):
       v_real = J @ w_real
 
       # #0000FF TODO call inverse kinematics to get corresponding joint angles
-      q_des = np.linalg.inv(J) @ p_des
+      # q_des = np.linalg.inv(J) @ p_des
+      q_des = self.robot.ComputeInverseKinematics(i, p_des) #00FF00
 
       # #0000FF TODO Add joint PD contribution to tau
       w_des = np.zeros(3)
@@ -1074,6 +1095,7 @@ def test_env():
                         on_rack=False,                  # 是否被挂起 Is robot hang up  # Original is True
                         motor_control_mode='CPG',       # 电机模式 Original is PD
                         action_repeat=100,
+                        observation_space_mode='LR_COURSE_OBS',
                         )
 
   obs = env.reset()
