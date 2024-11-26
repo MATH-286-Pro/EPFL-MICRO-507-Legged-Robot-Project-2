@@ -48,7 +48,9 @@ class QuadrupedTrainer:
                        task_env="FWD_LOCOMOTION", 
                        observation_space_mode="LR_COURSE_OBS",
                        terrain   = None,
-                       add_noise = True):
+                       test_flagrun = False,
+                       add_noise = True,
+                       ):
         """
         Set environment configuration.
 
@@ -63,7 +65,9 @@ class QuadrupedTrainer:
             "observation_space_mode": observation_space_mode,
             "terrain": terrain,
             "add_noise": add_noise,
+            'test_flagrun': test_flagrun,
         }
+
 
     def initialize_environment(self):
         """
@@ -72,7 +76,7 @@ class QuadrupedTrainer:
         # Directory to save models and logs
         self.save_path = os.path.join(self.log_dir, datetime.now().strftime("%m%d%y%H%M%S") + '/')
         os.makedirs(self.save_path, exist_ok=True)
-        self.checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=self.save_path, name_prefix='rl_model', verbose=2)  #FF00FF 定义保存频率
+        self.checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=self.save_path, name_prefix='rl_model', verbose=2)  #FF00FF 定义保存频率 Define save frequency
 
         # Create environment
         env = lambda: QuadrupedGymEnv(**self.env_configs)
@@ -173,7 +177,9 @@ if __name__ == "__main__":
     trainer = QuadrupedTrainer(algorithm="SAC", num_envs=1, load_nn=False)
     trainer.set_env_config(motor_control_mode     ="CPG", 
                            task_env               ="FWD_LOCOMOTION", 
-                           observation_space_mode ="LR_COURSE_OBS")
-    trainer.initialize_environment()
+                           observation_space_mode ="LR_COURSE_OBS",
+                           terrain                = None,
+                           test_flagrun           = False,
+                           add_noise              = True)
     trainer.train(total_timesteps=1000000)
     trainer.save_model()

@@ -36,28 +36,21 @@ class QuadrupedSimulation:
 
     def set_env_config(self, render = True, 
                        record_video = False, 
-                       add_noise    = False, 
-                       motor_control_mode="CPG",                  # 设置 PD 还是 CPG
-                       task_env="FWD_LOCOMOTION",                 # 设置 task
-                       observation_space_mode="LR_COURSE_OBS"):   # 设置 observation space
-        """
-        Set environment configuration.
+                       motor_control_mode="CPG",                  # motor control mode
+                       task_env="FWD_LOCOMOTION",                 # task
+                       observation_space_mode="LR_COURSE_OBS",    # observation space
+                       terrain    = None,                         # terrain
+                       add_noise  = False,                        # moise
+                       ):   
 
-        Parameters:
-        - render (bool): Whether to render the environment.
-        - record_video (bool): Whether to record the video.
-        - add_noise (bool): Whether to add noise to the environment.
-        - motor_control_mode (str): Motor control mode (e.g., "CPG").
-        - task_env (str): Task environment (e.g., "FWD_LOCOMOTION").
-        - observation_space_mode (str): Observation space mode.
-        """
         self.env_config = {
-            "motor_control_mode": motor_control_mode,
-            "task_env": task_env,
+            "render":                 render,
+            "record_video":           record_video,
+            "motor_control_mode":     motor_control_mode,
+            "task_env":               task_env,
             "observation_space_mode": observation_space_mode,
-            "render": render,
-            "record_video": record_video,
-            "add_noise": add_noise
+            "terrain":                terrain,
+            "add_noise":              add_noise,
         }
 
     def load_plots(self):
