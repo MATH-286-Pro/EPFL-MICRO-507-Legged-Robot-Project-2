@@ -60,12 +60,21 @@ interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '102824115106'
 
 # log_dir = interm_dir + '111024114527' #00FF00
-log_dir = interm_dir + '111224204842' #00FF00
+# log_dir = interm_dir + '111224204842' #00FF00
+log_dir = interm_dir + '112624155026' #00FF00
+
+
 
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
-env_config = {}
+
+# Copy from run_sb3.py
+env_config = {"motor_control_mode":"CPG",
+               "task_env": "FWD_LOCOMOTION", #  "LR_COURSE_TASK",
+               "observation_space_mode": "LR_COURSE_OBS"}  # CPG-rl
+
+# env_config = {}   # Defalut PD-rl
 env_config['render'] = True
 env_config['record_video'] = False
 env_config['add_noise'] = False 
@@ -80,9 +89,15 @@ plot_results([log_dir] , 10e10, 'timesteps', LEARNING_ALG + ' ')
 plt.show() 
 
 # reconstruct env 
-env = lambda: QuadrupedGymEnv(**env_config)
+env = lambda: QuadrupedGymEnv(**env_config)   # Environment Setting 环境参数
 env = make_vec_env(env, n_envs=1)
 env = VecNormalize.load(stats_path, env)
+
+# #00FF00 添加测试 add for
+# print("Saved observation_space  :", env.observation_space) # 我们设定的 quadruped_gym_env.py
+# print("Current observation_space:", env.venv.observation_space)
+# #00FF00
+
 env.training = False    # do not update stats at test time
 env.norm_reward = False # reward normalization is not needed at test time
 

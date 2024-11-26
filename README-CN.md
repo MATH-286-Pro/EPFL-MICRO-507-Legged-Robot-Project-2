@@ -48,3 +48,8 @@
 
 
 ## 4.测试日志
+- **2024.11.25 周一**
+  - 发现 CPG-RL 训练出来的观测器维度有问题
+  - ```env = VecNormalize.load(stats_path, env)``` 报错
+- **2024.11.26 周二**
+  - 发现是因为 `quadruped_gym_env.py` 中的 `linalg.inv` 导致模拟非常慢

@@ -107,7 +107,7 @@ MU_LOW = 1
 MU_UPP = 2
 
 
-class QuadrupedGymEnv(gym.Env):
+class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is a class inherit from gym.Env
   """The gym environment for a quadruped {Unitree A1}.
 
   It simulates the locomotion of a quadrupedal robot. 
@@ -228,20 +228,20 @@ class QuadrupedGymEnv(gym.Env):
       
       # Standard bound
       # 标准边界
-      orientation_limit = np.array([1.0, 1.0, 1.0, 1.0])  # Quaternion
-      linear_velocity_limit = np.array([5.0, 1.0, 5.0])   # Max linear velocity in m/s
+      orientation_limit = np.array([1.0, 1.0, 1.0, 1.0])     # Quaternion
+      linear_velocity_limit = np.array([5.0, 1.0, 5.0])      # Max linear velocity in m/s
       angular_velocity_limit = np.array([10.0, 10.0, 10.0])  # Max angular velocity in rad/s
-      foot_contact_limit_upp = np.array([1.0] * 4)  # Foot contacts are binary (0 or 1)
+      foot_contact_limit_upp = np.array([1.0] * 4)           # Foot contacts are binary (0 or 1)
       foot_contact_limit_low = np.array([0.0] * 4)
       
       # CPG state limits
       # CPG 边界
-      cpg_amplitude_limit_upp = np.array([MU_UPP] * 4)  # Upper limit based on CPG amplitude range
-      cpg_amplitude_limit_low = np.array([MU_LOW] * 4)  # lower limit based on CPG amplitude range
-      cpg_phase_limit_upp = np.array([2 * np.pi] * 4)   # Phase ranges from 0 to 2π
+      cpg_amplitude_limit_upp = np.array([MU_UPP] * 4)       # Upper limit based on CPG amplitude range
+      cpg_amplitude_limit_low = np.array([MU_LOW] * 4)       # lower limit based on CPG amplitude range
+      cpg_phase_limit_upp = np.array([2 * np.pi] * 4)        # Phase ranges from 0 to 2π
       cpg_phase_limit_low = np.array([0.0] * 4)
-      cpg_amplitude_derivative_limit = np.array([5.0] * 4)  # Rate limit for amplitude change
-      cpg_phase_derivative_limit = np.array([5.0] * 4)  # Rate limit for phase change
+      cpg_amplitude_derivative_limit = np.array([5.0] * 4)   # Rate limit for amplitude change
+      cpg_phase_derivative_limit = np.array([5.0] * 4)       # Rate limit for phase change
 
       # Concatenate all high and low bounds
       # 使用上面的参数，构建上下界
@@ -267,7 +267,7 @@ class QuadrupedGymEnv(gym.Env):
     else:
       raise ValueError("observation space not defined or not intended")
 
-    self.observation_space = spaces.Box(observation_low, observation_high, dtype=np.float32)
+    self.observation_space = spaces.Box(observation_low, observation_high, dtype=np.float32) #00FFFF 2024.11.25 可能出现维度不对的地方
 
   def setupActionSpace(self):
     """ Set up action space for RL. """
@@ -284,6 +284,7 @@ class QuadrupedGymEnv(gym.Env):
     self._action_dim = action_dim
 
   # 获取观测数据 (超过边界的数据不会被获取)
+  # Get observation data (The data outside range won't be record)
   def _get_observation(self):
     """Get observation, depending on obs space selected. """
     if self._observation_space_mode == "DEFAULT":
@@ -295,12 +296,12 @@ class QuadrupedGymEnv(gym.Env):
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),           # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
                                           self.robot.GetBaseLinearVelocity(),
                                           self.robot.GetBaseAngularVelocity(),
-                                          self.robot.GetContactInfo()[3], #FF0000 Wrong! The contact info is a tuple with the first two elements scalars and the last two lists, making the concatenation failed. 
-                                                                                  # for now it returns boolean for each foot in contact (1) or not (0)
+                                          self.robot.GetContactInfo()[3],            # #FF0000 Wrong! The contact info is a tuple with the first two elements scalars and the last two lists, making the concatenation failed. 
+                                                                                     # for now it returns boolean for each foot in contact (1) or not (0)
                                           self._cpg.get_r(),                         # CPG amplitude for each foot
                                           self._cpg.get_theta(),                     # CPG phase for each foot
                                           self._cpg.get_dr(),                        # Amplitude derivatives for each foot
-                                          self._cpg.get_dtheta()), axis=None)                   # Phase derivatives for each foot 
+                                          self._cpg.get_dtheta()), axis=None)        # Phase derivatives for each foot 
       
 
       # #0000FF TODO Get observation from robot. What are reasonable measurements we could get on hardware?
@@ -389,8 +390,8 @@ class QuadrupedGymEnv(gym.Env):
 
     return dist_to_goal, angle
   
-  #00FF00 奖励函数1
-  #00FF00 Reward Function 1
+  #00FF00 奖励函数1 命令机器人到目标位置
+  #00FF00 Reward Function 1 Order robot to get to specific location
   def _reward_flag_run(self):
     """ Learn to move towards goal location. """
     curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
@@ -413,8 +414,8 @@ class QuadrupedGymEnv(gym.Env):
     
     return max(reward,0) # keep rewards positive
   
-  #00FF00 自定义奖励函数
-  #00FF00 DIY reward Function
+  #00FF00 奖励函数2 命令机器人完成课程任务
+  #00FF00 Reward Function 2: Ask robot to do course task
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
     # #0000FF TODO add your reward function. 奖励函数
@@ -553,11 +554,11 @@ class QuadrupedGymEnv(gym.Env):
       q_real  = q[group_indices]                               # real angle of ONE leg
       w_real = dq[group_indices]                               # real angule v of ONE leg
       
-      v_des = np.zeros(3)                                  # target velocity of ONE leg
+      v_des = np.zeros(3)                                      # target velocity of ONE leg
       v_real = J @ w_real
 
       # #0000FF TODO call inverse kinematics to get corresponding joint angles
-      q_des = np.linalg.inv(J) @ p_des
+      q_des = self.robot.ComputeInverseKinematics(i, p_des)   #FF0000  Much faster than np.linalg
 
       # #0000FF TODO Add joint PD contribution to tau
       w_des = np.zeros(3)
@@ -1071,9 +1072,13 @@ class QuadrupedGymEnv(gym.Env):
 # Define Test Environment
 def test_env():
   env = QuadrupedGymEnv(render=True, 
-                        on_rack=False,                  # 是否被挂起 Is robot hang up  # Original is True
+                        on_rack=True,                   # 是否被挂起 Is robot hang up  # Original is True
                         motor_control_mode='CPG',       # 电机模式 Original is PD
                         action_repeat=100,
+                        task_env='FWD_LOCOMOTION',      # 任务       Task:   "FWD_LOCOMOTION", "STAND_UP", "FLAGRUN"
+                        terrain='RANDOM',               # 地形       Terrain: None, "SLOPES", "STAIRS", "GAPS", "RANDOM"
+                        test_flagrun=False,             # 是否测试   If flagrun
+                        add_noise=True,                 # 是否加噪声 Add noise
                         )
 
   obs = env.reset()
