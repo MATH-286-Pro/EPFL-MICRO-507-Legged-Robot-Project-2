@@ -57,22 +57,18 @@ from utils.file_utils import get_latest_model, load_all_results
 
 LEARNING_ALG = "SAC"
 interm_dir = "./logs/intermediate_models/"
-# path to saved models, i.e. interm_dir + '102824115106'
-
-# log_dir = interm_dir + '111024114527' #00FF00
-# log_dir = interm_dir + '111224204842' #00FF00
-log_dir = interm_dir + '112624150725' #00FF00
-
-
-
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
 
-# Copy from run_sb3.py
+# path to saved models, i.e. interm_dir + '102824115106'
+log_dir = interm_dir + '112724193706' #00FF00
+
 env_config = {"motor_control_mode":"CPG",
-               "task_env": "FWD_LOCOMOTION", #  "LR_COURSE_TASK",
-               "observation_space_mode": "LR_COURSE_OBS"}  # CPG-rl
+               "task_env": "FWD_LOCOMOTION", 
+               "observation_space_mode": "LR_COURSE_OBS",
+               "terrain":"RANDOM",
+             }  # CPG-rl
 
 # env_config = {}   # Defalut PD-rl
 

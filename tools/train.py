@@ -19,24 +19,31 @@ from IPython.display import clear_output
 
 
 class QuadrupedTrainer:
-    def __init__(self, algorithm="PPO", num_envs=1, load_nn=False, log_dir="./logs/intermediate_models/"):
+    def __init__(self, algorithm = "PPO", 
+                 num_envs        = 1, 
+                 load_last_train = False,  
+                 load_dir        = "None"
+                 ):
         """
         Initialize the trainer class.
 
         Parameters:
         - algorithm (str): Learning algorithm ("PPO" or "SAC").
         - num_envs (int): Number of environments for parallel training.
-        - load_nn (bool): Whether to load a pre-trained model.
+        - load_last_train (bool): Whether to load a pre-trained model.
         - log_dir (str): Directory to save logs and models.
         """
         self.algorithm = algorithm
         self.num_envs = num_envs
-        self.load_nn = load_nn
-        self.log_dir = log_dir
+        self.load_last_train = load_last_train
+        # self.log_dir = log_dir
         self.env_configs = {}
         self.model = None
         self.env = None
-        self.save_path = None
+        self.SAVE_PATH = None
+
+        self.base_log_dir = "./logs/intermediate_models/"
+        self.log_dir = f"{self.base_log_dir}{load_dir}" if load_dir else self.base_log_dir
 
         # Auto detect GPU
         self.gpu_arg = "cuda" if torch.cuda.is_available() else "cpu"
@@ -44,12 +51,13 @@ class QuadrupedTrainer:
 
         self.checkpoint_callback = None
 
-    def set_env_config(self, motor_control_mode="CPG", 
-                       task_env="FWD_LOCOMOTION", 
-                       observation_space_mode="LR_COURSE_OBS",
-                       terrain   = None,
-                       test_flagrun = False,
-                       add_noise = True,
+    def set_env_config(self, motor_control_mode ="CPG", 
+                       task_env                 ="FWD_LOCOMOTION", 
+                       observation_space_mode   ="LR_COURSE_OBS",
+                       terrain                  = None,
+                       test_flagrun             = False,
+                       add_noise                = True,
+                       EPISODE_LENGTH           = 10,
                        ):
         """
         Set environment configuration.
@@ -66,6 +74,7 @@ class QuadrupedTrainer:
             "terrain": terrain,
             "add_noise": add_noise,
             'test_flagrun': test_flagrun,
+            "EPISODE_LENGTH": EPISODE_LENGTH,
         }
 
 
@@ -74,13 +83,14 @@ class QuadrupedTrainer:
         Initialize the training environment and setup paths.
         """
         # Directory to save models and logs
-        self.save_path = os.path.join(self.log_dir, datetime.now().strftime("%m%d%y%H%M%S") + '/')
-        os.makedirs(self.save_path, exist_ok=True)
-        self.checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=self.save_path, name_prefix='rl_model', verbose=2)  #FF00FF 定义保存频率 Define save frequency
+        # SAVE_PATH = './logs/intermediate_models/'+ datetime.now().strftime("%m%d%y%H%M%S") + '/'
+        self.SAVE_PATH = os.path.join('./logs/intermediate_models/', datetime.now().strftime("%m%d%y%H%M%S") + '/')   #SAVE_PATH
+        os.makedirs(self.SAVE_PATH, exist_ok=True)
+        self.checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=self.SAVE_PATH, name_prefix='rl_model', verbose=2)  #FF00FF 定义保存频率 Define save frequency
 
         # Create environment
         env = lambda: QuadrupedGymEnv(**self.env_configs)
-        self.env = make_vec_env(env, monitor_dir=self.save_path, n_envs=self.num_envs)
+        self.env = make_vec_env(env, monitor_dir=self.SAVE_PATH, n_envs=self.num_envs)
         self.env = VecNormalize(self.env, norm_obs=True, norm_reward=False, clip_obs=100.)
 
     def load_pretrained_model(self):
@@ -92,7 +102,7 @@ class QuadrupedTrainer:
 
         # Re-create environment
         env = lambda: QuadrupedGymEnv(**self.env_configs)
-        self.env = make_vec_env(env, monitor_dir=self.save_path, n_envs=self.num_envs, vec_env_cls=SubprocVecEnv)
+        self.env = make_vec_env(env, monitor_dir=self.SAVE_PATH, n_envs=self.num_envs, vec_env_cls=SubprocVecEnv)
         self.env = VecNormalize.load(stats_path, self.env)
 
         if self.algorithm == "PPO":
@@ -119,7 +129,7 @@ class QuadrupedTrainer:
                 "n_epochs": 10,
                 "clip_range": 0.2,
                 "clip_range_vf": 1, 
-                "verbose": 0,                  # 是否打开日志 # open log or not #00FFFF 1 means open, 0 means close
+                "verbose": 1,                  # 是否打开日志 # open log or not #00FFFF 1 means open, 0 means close
                 "policy_kwargs": policy_kwargs,
                 "device": self.gpu_arg
             }
@@ -152,7 +162,7 @@ class QuadrupedTrainer:
         """
         self.initialize_environment()
 
-        if self.load_nn:
+        if self.load_last_train:
             self.load_pretrained_model()
         else:
             self.create_model()
@@ -166,15 +176,15 @@ class QuadrupedTrainer:
         """
         Save the trained model and environment statistics.
         """
-        self.model.save(os.path.join(self.save_path, "rl_model"))
-        self.env.save(os.path.join(self.save_path, "vec_normalize.pkl"))
+        self.model.save(os.path.join(self.SAVE_PATH, "rl_model"))
+        self.env.save(os.path.join(self.SAVE_PATH, "vec_normalize.pkl"))
         if self.algorithm == "SAC":
-            self.model.save_replay_buffer(os.path.join(self.save_path, "off_policy_replay_buffer"))
+            self.model.save_replay_buffer(os.path.join(self.SAVE_PATH, "off_policy_replay_buffer"))
 
 
 # 示例使用
 if __name__ == "__main__":
-    trainer = QuadrupedTrainer(algorithm="SAC", num_envs=1, load_nn=False)
+    trainer = QuadrupedTrainer(algorithm="SAC", num_envs=1, load_last_train=False)
     trainer.set_env_config(motor_control_mode     ="CPG", 
                            task_env               ="FWD_LOCOMOTION", 
                            observation_space_mode ="LR_COURSE_OBS",

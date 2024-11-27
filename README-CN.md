@@ -53,3 +53,6 @@
   - ```env = VecNormalize.load(stats_path, env)``` 报错
 - **2024.11.26 周二**
   - 发现是因为 `quadruped_gym_env.py` 中的 `linalg.inv` 导致模拟非常慢
+- **2024.11.27 周三**
+  - Colab 训练 390K 步，无 noise 训练效果不错
+  - 观测到 Episode Length 似乎被规定为 1000 步，需要找到在哪里设置的

@@ -99,8 +99,8 @@ VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #         torques are computed based on inverse kinematics + joint PD (or you can add Cartesian PD)
 
 
-EPISODE_LENGTH = 10   # how long before we reset the environment (max episode length for RL)
-MAX_FWD_VELOCITY = 1  # to avoid exploiting simulator dynamics, cap max reward for body velocity 
+# EPISODE_LENGTH = 10   # how long before we reset the environment (max episode length for RL)        #00FF00
+# MAX_FWD_VELOCITY = 1  # to avoid exploiting simulator dynamics, cap max reward for body velocity    #00FF00
 
 # CPG quantities
 MU_LOW = 1
@@ -129,6 +129,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       add_noise=True,
       terrain=None,
       test_flagrun=False, 
+      EPISODE_LENGTH = 10,  #00FF00 Added episode length         添加新传参:训练长度
+      MAX_FWD_VELOCITY = 1, #00FF00 Added max forward velocity   添加新传参：最大速度
       **kwargs): # any extra arguments from legacy
     """Initialize the quadruped gym environment.
 
