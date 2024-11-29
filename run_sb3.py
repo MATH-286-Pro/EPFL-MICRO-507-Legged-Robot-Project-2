@@ -46,18 +46,20 @@ from utils.file_utils import get_latest_model
 from env.quadruped_gym_env import QuadrupedGymEnv
 
 if __name__ == "__main__":
+    
+    USE_GPU      = True    # make sure to install all necessary drivers 
+
     ###############################################################################################################
     #00FFFF Setting 1:
     LEARNING_ALG = "SAC"   # or "PPO"
     NUM_ENVS     = 1       # how many pybullet environments to create for data collection  #00FF00
-    USE_GPU      = True    # make sure to install all necessary drivers 
     LOAD_NN      = True    # if you want to initialize training with a previous model      #00FF00 继续上次训练 continue last traning
     LOAD_DIR     = '112924102748_cpg_SAC_FWD_460k_continued'
     SAVE_FREQ    = 10000   # Set save frequency
 
     #00FFFF Setting 2:
     env_configs = {"motor_control_mode":     "CPG",
-                   "task_env":               "FWD_LOCOMOTION", 
+                   "task_env":               "FLAGRUN", # "FLAGRUN", "FWD_LOCOMOTION"
                    "observation_space_mode": "LR_COURSE_OBS",
                    "terrain":                 None,       
                    "add_noise":               False,

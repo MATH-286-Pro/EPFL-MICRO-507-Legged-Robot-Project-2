@@ -126,11 +126,11 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       on_rack        = False,
       render         = False,
       record_video   = False,
-      add_noise      = True,
+      add_noise      = False,
       terrain        = None,
       test_flagrun   = False, 
       EPISODE_LENGTH = 10,  #00FF00 Added episode length         添加新传参:训练长度
-      MAX_FWD_VELOCITY = 1, #00FF00 Added max forward velocity   添加新传参：最大速度
+      MAX_FWD_VELOCITY = 5, #00FF00 Added max forward velocity   添加新传参：最大速度
       **kwargs): # any extra arguments from legacy
     """Initialize the quadruped gym environment.
 
@@ -153,26 +153,32 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       terrain: string indicating what kind of terrain ("STAIRS", "SLOPES", "GAPS", "RANDOM")
       test_flagrun: follow certain goals in order, fixed coefficient of friction 
     """
-    self._robot_config = robot_config
-    self._isRLGymInterface = isRLGymInterface
-    self._time_step = time_step
-    self._action_repeat = action_repeat
+    self._robot_config       = robot_config
+    self._isRLGymInterface   = isRLGymInterface
+    self._time_step          = time_step
+    self._action_repeat      = action_repeat
     self._motor_control_mode = motor_control_mode
-    self._TASK_ENV = task_env
+    self._TASK_ENV           = task_env
     self._observation_space_mode = observation_space_mode
-    self._hard_reset = True # must fully reset simulation at init
-    self._on_rack = on_rack
-    self._is_render = render
-    self._is_record_video = record_video
-    self._add_noise = add_noise
-    self._using_test_env = test_env
-    self._test_flagrun = test_flagrun
-    self.goal_id = None
-    self._terrain = terrain
+    self._hard_reset         = True # must fully reset simulation at init
+    self._on_rack            = on_rack
+    self._is_render          = render
+    self._is_record_video    = record_video
+    self._add_noise          = add_noise
+    self._using_test_env     = test_env
+    self._test_flagrun       = test_flagrun 
+    self.goal_id             = None
+    self._terrain            = terrain
+    self.MAX_FWD_VELOCITY    = MAX_FWD_VELOCITY
     if self._add_noise:
       self._observation_noise_stdev = 0.01 #
     else:
       self._observation_noise_stdev = 0.0
+
+    # #00FF00 add on 2024.11.29
+    # # simplify parameter
+    # if task_env == "FLAGRUN": 
+    #   self._test_flagrun = True
 
     # other bookkeeping 
     self._num_bullet_solver_iterations = int(300 / action_repeat) 
@@ -220,8 +226,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4))) -  OBSERVATION_EPS)
     
-    # 自制观测空间模式 (增加CPG)
-    # DIY Observation Mode (Add CPG)
+    # CPG 观测空间模式 
+    # CPG Observation Mode
     elif self._observation_space_mode == "LR_COURSE_OBS": 
       # #0000FF TODO Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
@@ -230,20 +236,20 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       
       # Standard bound
       # 标准边界
-      orientation_limit = np.array([1.0, 1.0, 1.0, 1.0])     # Quaternion
-      linear_velocity_limit = np.array([5.0, 1.0, 5.0])      # Max linear velocity in m/s
-      angular_velocity_limit = np.array([10.0, 10.0, 10.0])  # Max angular velocity in rad/s
-      foot_contact_limit_upp = np.array([1.0] * 4)           # Foot contacts are binary (0 or 1)
+      orientation_limit      = np.array([1.0, 1.0, 1.0, 1.0]) # Quaternion
+      linear_velocity_limit  = np.array([self.MAX_FWD_VELOCITY, 1.0, 5.0]) # Max linear velocity in m/s  #00FF00 change on 2024.11.29
+      angular_velocity_limit = np.array([10.0, 10.0, 10.0])   # Max angular velocity in rad/s
+      foot_contact_limit_upp = np.array([1.0] * 4)            # Foot contacts are binary (0 or 1)
       foot_contact_limit_low = np.array([0.0] * 4)
       
       # CPG state limits
       # CPG 边界
-      cpg_amplitude_limit_upp = np.array([MU_UPP] * 4)       # Upper limit based on CPG amplitude range
-      cpg_amplitude_limit_low = np.array([MU_LOW] * 4)       # lower limit based on CPG amplitude range
-      cpg_phase_limit_upp = np.array([2 * np.pi] * 4)        # Phase ranges from 0 to 2π
-      cpg_phase_limit_low = np.array([0.0] * 4)
-      cpg_amplitude_derivative_limit = np.array([5.0] * 4)   # Rate limit for amplitude change
-      cpg_phase_derivative_limit = np.array([5.0] * 4)       # Rate limit for phase change
+      cpg_amplitude_limit_upp = np.array([MU_UPP] * 4)        # Upper limit based on CPG amplitude range
+      cpg_amplitude_limit_low = np.array([MU_LOW] * 4)        # lower limit based on CPG amplitude range
+      cpg_phase_limit_upp     = np.array([2 * np.pi] * 4)     # Phase ranges from 0 to 2π
+      cpg_phase_limit_low     = np.array([0.0] * 4)
+      cpg_amplitude_derivative_limit = np.array([5.0] * 4)    # Rate limit for amplitude change
+      cpg_phase_derivative_limit = np.array([5.0] * 4)        # Rate limit for phase change
 
       # Concatenate all high and low bounds
       # 使用上面的参数，构建上下界
@@ -269,7 +275,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     else:
       raise ValueError("observation space not defined or not intended")
 
-    self.observation_space = spaces.Box(observation_low, observation_high, dtype=np.float32) #00FFFF 2024.11.25 可能出现维度不对的地方
+    self.observation_space = spaces.Box(observation_low, observation_high, dtype=np.float32) 
 
   def setupActionSpace(self):
     """ Set up action space for RL. """
@@ -308,8 +314,6 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
 
       # #0000FF TODO Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
-      # 50 is arbitrary
-      # self._observation = np.zeros(50)
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -349,25 +353,30 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     """Decide whether we should stop the episode and reset the environment. """
     return self.is_fallen() 
 
+  #00FF00 默认奖励函数
+  #00FF00 Defalut reward function
   def _reward_fwd_locomotion(self, des_vel_x=None):
     """Learn forward locomotion"""
     vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
     # If you want to track a desired velocity 
     # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
-    # minimize yaw (go straight)
-    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
-    # don't drift laterally 
-    drift_reward = -0.01 * abs(self.robot.GetBasePosition()[1]) 
-    # minimize energy 
+
+    # minimize yaw (go straight) YAW 偏航角
+    yaw_penalty = 0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
+
+    # don't drift laterally  惩罚机器人在侧向（即 𝑦 方向）上偏移的
+    drift_penalty = 0.01 * abs(self.robot.GetBasePosition()[1]) 
+
+    # minimize energy 能量
     energy_reward = 0 
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
-      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
+      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step           # P * t
 
-    reward = vel_tracking_reward \
-            + yaw_reward \
-            + drift_reward \
-            - 0.01 * energy_reward \
-            - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
+    reward = + vel_tracking_reward \
+             - yaw_penalty \
+             - drift_penalty \
+             - 0.01 * energy_reward \
+             - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
 
     return max(reward,0) # keep rewards positive
 
@@ -376,7 +385,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     # current object location
     base_pos = self.robot.GetBasePosition()
     yaw = self.robot.GetBaseOrientationRollPitchYaw()[2]
-    goal_vec = self._goal_location
+    goal_vec = self._goal_location #FF0000 Error 出现报错
     dist_to_goal = np.linalg.norm(base_pos[0:2]-goal_vec)
 
     # angle to goal (from current heading)
@@ -396,22 +405,26 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
   #00FF00 Reward Function 1 Order robot to get to specific location
   def _reward_flag_run(self):
     """ Learn to move towards goal location. """
+
+    # 获取 当前-目标-距离，当前-目标-角度
+    # Get me-goal-distance, me-goal-angle
     curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
 
     # minimize distance to goal (we want to move towards the goal)
     dist_reward = 10 * ( self._prev_pos_to_goal - curr_dist_to_goal)
 
-    # minimize yaw deviation to goal (necessary?)                                       #0000FF TODO
-
-    yaw_reward = 0 # -0.01 * np.abs(angle) 
+    #0000FF TODO
+    # minimize yaw deviation to goal (necessary?)                                       
+    # yaw_penalty = 0 # 0.01 * np.abs(angle) 
+    yaw_penalty = 0.01 * np.abs(angle) 
 
     # minimize energy 
     energy_reward = 0 
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
       energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
 
-    reward = dist_reward \
-            + yaw_reward \
+    reward = dist_reward  \
+            - yaw_penalty \
             - 0.001 * energy_reward 
     
     return max(reward,0) # keep rewards positive
@@ -423,8 +436,9 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     # #0000FF TODO add your reward function. 奖励函数
     return 0
 
-  # 不同任务选择
-  # Different Task Selection
+  #00FF00 
+  # 不同任务选择：即不同奖励函数
+  # Different Task Selection：Different reward function
   def _reward(self):
     """ Get reward depending on task"""
     if   self._TASK_ENV == "FWD_LOCOMOTION":
@@ -589,7 +603,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     self._dt_motor_torques = []
     self._dt_motor_velocities = []
     if "FLAGRUN" in self._TASK_ENV:
-      self._prev_pos_to_goal, _ = self.get_distance_and_angle_to_goal()
+      self._prev_pos_to_goal, _ = self.get_distance_and_angle_to_goal()   # 这里先调用了 距离获取函数，但实际上根本没有设置目标
     
     for _ in range(self._action_repeat):
       if self._isRLGymInterface: 
@@ -666,7 +680,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
         else:
           print('Terrain',self._terrain,'is not implemented')
 
-      elif self._TASK_ENV == "FLAGRUN":
+      if self._TASK_ENV == "FLAGRUN":  # 妈的这个怎么原先是 elif #FF0000
         self.goal_id = None
         if self._test_flagrun:
           self._ground_mu_k = ground_mu_k = 0.8
@@ -718,7 +732,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
                           baseCollisionShapeIndex = sh_colBox,
                           basePosition = [self._goal_location[0],self._goal_location[1],0.6],
                           baseOrientation=orn)
-    # print('goal is at ', self._goal_location)
+    print('goal is at ', self._goal_location) #FF0000 过去被注释掉
 
   def _settle_robot(self):
     """ Settle robot and add noise to init configuration. """
@@ -1074,13 +1088,13 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
 # Define Test Environment
 def test_env():
   env = QuadrupedGymEnv(render=True, 
-                        on_rack=True,                   # 是否被挂起 Is robot hang up  # Original is True
+                        on_rack=False,                  # 是否被挂起 Is robot hang up  # Original is True
                         motor_control_mode='CPG',       # 电机模式 Original is PD
                         action_repeat=100,
-                        task_env='FWD_LOCOMOTION',      # 任务       Task:   "FWD_LOCOMOTION", "STAND_UP", "FLAGRUN"
+                        task_env="FLAGRUN",             # 任务       Task:   "FWD_LOCOMOTION", "STAND_UP", "FLAGRUN"
                         terrain='RANDOM',               # 地形       Terrain: None, "SLOPES", "STAIRS", "GAPS", "RANDOM"
-                        test_flagrun=False,             # 是否测试   If flagrun
-                        add_noise=True,                 # 是否加噪声 Add noise
+                        # test_flagrun=False,           # 是否测试   If flagrun
+                        # add_noise=False,              # 是否加噪声 Add noise
                         )
 
   obs = env.reset()
@@ -1089,6 +1103,9 @@ def test_env():
   action_low = -np.ones(action_dim)
   print('act len', action_dim)
   action = action_low.copy()
+
+  # Simulation
+  # 仿真环境
   while True:
     action = 2*np.random.rand(action_dim)-1
     obs, reward, done, info = env.step(action)
