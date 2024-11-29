@@ -46,12 +46,14 @@ from utils.file_utils import get_latest_model
 from env.quadruped_gym_env import QuadrupedGymEnv
 
 if __name__ == "__main__":
-
+    ###############################################################################################################
     #00FFFF Setting 1:
     LEARNING_ALG = "SAC"   # or "PPO"
-    LOAD_NN      = False   # if you want to initialize training with a previous model     #00FF00 继续上次训练 continue last traning
-    NUM_ENVS     = 1       # how many pybullet environments to create for data collection #00FF00
+    NUM_ENVS     = 1       # how many pybullet environments to create for data collection  #00FF00
     USE_GPU      = True    # make sure to install all necessary drivers 
+    LOAD_NN      = True    # if you want to initialize training with a previous model      #00FF00 继续上次训练 continue last traning
+    LOAD_DIR     = '112924102748_cpg_SAC_FWD_460k_continued'
+    SAVE_FREQ    = 10000   # Set save frequency
 
     #00FFFF Setting 2:
     env_configs = {"motor_control_mode":     "CPG",
@@ -62,6 +64,7 @@ if __name__ == "__main__":
                    "EPISODE_LENGTH":          15,
                    "render":                  False,  
                    }
+    ###############################################################################################################
 
     if USE_GPU and LEARNING_ALG=="SAC":
         gpu_arg = "auto" 
@@ -70,7 +73,7 @@ if __name__ == "__main__":
 
     if LOAD_NN:
         interm_dir = "./logs/intermediate_models/"
-        log_dir = interm_dir + '112824153313_cpg_SAC_FWD_760k'                           # add path #00FF00 继续上次训练 continue last traning
+        log_dir = interm_dir +  LOAD_DIR                           # add path #00FF00 继续上次训练 continue last traning
         stats_path = os.path.join(log_dir, "vec_normalize.pkl")
         model_name = get_latest_model(log_dir)
 
@@ -78,7 +81,7 @@ if __name__ == "__main__":
     SAVE_PATH = './logs/intermediate_models/'+ datetime.now().strftime("%m%d%y%H%M%S") + '/'
     os.makedirs(SAVE_PATH, exist_ok=True)
     # checkpoint to save policy network periodically
-    checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=SAVE_PATH,name_prefix='rl_model', verbose=2)  #00FF00 Change save_freq = 30000
+    checkpoint_callback = CheckpointCallback(save_freq=SAVE_FREQ, save_path=SAVE_PATH,name_prefix='rl_model', verbose=2) 
 
     # create Vectorized gym environment
     env = lambda: QuadrupedGymEnv(**env_configs)                                          #00FFFF Setting 2: environment 

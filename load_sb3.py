@@ -60,21 +60,24 @@ interm_dir = "./logs/intermediate_models/"
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
 
-#00FF00
+###############################################################################################################
+#00FFFF Setting 1:
 LEARNING_ALG = "SAC"
+target_dir   = '112924102748_cpg_SAC_FWD_RANDOM_460k_continued'   #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
 
-log_dir = interm_dir + '112924102748_cpg_SAC_FWD_RANDOM_460k_continued' #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
-
+#00FFFF Setting 2:
 env_config = {"motor_control_mode":      "CPG",
                "task_env":               "FWD_LOCOMOTION", 
                "observation_space_mode": "LR_COURSE_OBS",
-               "terrain":                None, #"RANDOM",  #"RANDOM",
+               "terrain":                None, #"RANDOM",  
                "render":                 True,
                "record_video":           False,
                "add_noise":              False,
-             }  # CPG-rl
+             } 
 
 # env_config['competition_env'] = True
+###############################################################################################################
+log_dir = interm_dir + target_dir
 
 # get latest model and normalization stats, and plot 
 stats_path = os.path.join(log_dir, "vec_normalize.pkl")
