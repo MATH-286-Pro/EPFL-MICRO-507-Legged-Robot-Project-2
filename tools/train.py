@@ -58,6 +58,7 @@ class QuadrupedTrainer:
                        test_flagrun             = False,
                        add_noise                = True,
                        EPISODE_LENGTH           = 10,
+                       render                   = False,
                        ):
         """
         Set environment configuration.
@@ -68,13 +69,14 @@ class QuadrupedTrainer:
         - observation_space_mode (str): Observation space mode.
         """
         self.env_configs = {
-            "motor_control_mode": motor_control_mode,
-            "task_env": task_env,
+            "motor_control_mode":     motor_control_mode,
+            "task_env":               task_env,
             "observation_space_mode": observation_space_mode,
-            "terrain": terrain,
-            "add_noise": add_noise,
-            'test_flagrun': test_flagrun,
-            "EPISODE_LENGTH": EPISODE_LENGTH,
+            "terrain":                terrain,
+            "add_noise":              add_noise,
+            'test_flagrun':           test_flagrun,
+            "EPISODE_LENGTH":         EPISODE_LENGTH,
+            "render":                 render
         }
 
 

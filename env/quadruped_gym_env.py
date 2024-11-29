@@ -116,19 +116,19 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
   """
   def __init__(
       self,
-      robot_config=robot_config,
-      isRLGymInterface=True,
-      time_step=0.001,
-      action_repeat=10,  
-      motor_control_mode="CPG",
-      task_env="FWD_LOCOMOTION",
-      observation_space_mode="DEFAULT",
-      on_rack=False,
-      render=False,
-      record_video=False,
-      add_noise=True,
-      terrain=None,
-      test_flagrun=False, 
+      robot_config = robot_config,
+      isRLGymInterface = True,
+      time_step = 0.001,
+      action_repeat = 10,  
+      motor_control_mode     = "CPG",
+      task_env               = "FWD_LOCOMOTION",
+      observation_space_mode = "DEFAULT",
+      on_rack        = False,
+      render         = False,
+      record_video   = False,
+      add_noise      = True,
+      terrain        = None,
+      test_flagrun   = False, 
       EPISODE_LENGTH = 10,  #00FF00 Added episode length         添加新传参:训练长度
       MAX_FWD_VELOCITY = 1, #00FF00 Added max forward velocity   添加新传参：最大速度
       **kwargs): # any extra arguments from legacy

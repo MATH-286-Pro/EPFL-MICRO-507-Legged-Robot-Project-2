@@ -56,3 +56,12 @@
 - **2024.11.27 周三**
   - Colab 训练 390K 步，无 noise 训练效果不错
   - 观测到 Episode Length 似乎被规定为 1000 步，需要找到在哪里设置的
+- **2024.11.29 周五**
+  - 112924102748_cpg_SAC_FWD_RANDOM_460k_continued 行走极其稳定
+
+
+## 5.待定任务
+- [ ] Flagrun 目标点
+- [ ] Robust 抗干扰
+- [ ] Stairs 上楼梯
+- [ ] 对比 PPO 与 SAC 算法区别

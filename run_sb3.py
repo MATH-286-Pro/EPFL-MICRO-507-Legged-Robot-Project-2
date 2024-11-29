@@ -46,17 +46,22 @@ from utils.file_utils import get_latest_model
 from env.quadruped_gym_env import QuadrupedGymEnv
 
 if __name__ == "__main__":
-    LEARNING_ALG = "PPO" # or "SAC"
-    LOAD_NN = False # if you want to initialize training with a previous model     #00FF00 继续上次训练 continue last traning
-    NUM_ENVS = 1    # how many pybullet environments to create for data collection #00FF00
-    USE_GPU = True # make sure to install all necessary drivers 
 
-    LEARNING_ALG = "SAC";  USE_GPU = True
-    # after implementing, you will want to test how well the agent learns with your MDP: 
-    env_configs = {"motor_control_mode":"CPG",
-                "task_env": "FWD_LOCOMOTION", #  "LR_COURSE_TASK",
-                "observation_space_mode": "LR_COURSE_OBS"}
-    # env_configs = {}
+    #00FFFF Setting 1:
+    LEARNING_ALG = "SAC"   # or "PPO"
+    LOAD_NN      = False   # if you want to initialize training with a previous model     #00FF00 继续上次训练 continue last traning
+    NUM_ENVS     = 1       # how many pybullet environments to create for data collection #00FF00
+    USE_GPU      = True    # make sure to install all necessary drivers 
+
+    #00FFFF Setting 2:
+    env_configs = {"motor_control_mode":     "CPG",
+                   "task_env":               "FWD_LOCOMOTION", 
+                   "observation_space_mode": "LR_COURSE_OBS",
+                   "terrain":                 None,       
+                   "add_noise":               False,
+                   "EPISODE_LENGTH":          15,
+                   "render":                  False,  
+                   }
 
     if USE_GPU and LEARNING_ALG=="SAC":
         gpu_arg = "auto" 
@@ -65,7 +70,7 @@ if __name__ == "__main__":
 
     if LOAD_NN:
         interm_dir = "./logs/intermediate_models/"
-        log_dir = interm_dir + '112524135725_cpg_rl'                           # add path #00FF00 继续上次训练 continue last traning
+        log_dir = interm_dir + '112824153313_cpg_SAC_FWD_760k'                           # add path #00FF00 继续上次训练 continue last traning
         stats_path = os.path.join(log_dir, "vec_normalize.pkl")
         model_name = get_latest_model(log_dir)
 
@@ -76,7 +81,7 @@ if __name__ == "__main__":
     checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=SAVE_PATH,name_prefix='rl_model', verbose=2)  #00FF00 Change save_freq = 30000
 
     # create Vectorized gym environment
-    env = lambda: QuadrupedGymEnv(**env_configs)                                          #00FFFF Set environment 
+    env = lambda: QuadrupedGymEnv(**env_configs)                                          #00FFFF Setting 2: environment 
     env = make_vec_env(env, monitor_dir=SAVE_PATH,n_envs=NUM_ENVS, vec_env_cls=SubprocVecEnv)
     # normalize observations to stabilize learning (why?) # [NOTE]
     env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=100.)

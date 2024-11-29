@@ -55,35 +55,38 @@ from utils.utils import plot_results
 from utils.file_utils import get_latest_model, load_all_results
 
 
-LEARNING_ALG = "SAC"
 interm_dir = "./logs/intermediate_models/"
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
 
-# path to saved models, i.e. interm_dir + '102824115106'
-log_dir = interm_dir + '112724193706' #00FF00
+#00FF00
+LEARNING_ALG = "SAC"
 
-env_config = {"motor_control_mode":"CPG",
-               "task_env": "FWD_LOCOMOTION", 
+log_dir = interm_dir + '112924102748_cpg_SAC_FWD_RANDOM_460k_continued' #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
+
+env_config = {"motor_control_mode":      "CPG",
+               "task_env":               "FWD_LOCOMOTION", 
                "observation_space_mode": "LR_COURSE_OBS",
-               "terrain":"RANDOM",
+               "terrain":                None, #"RANDOM",  #"RANDOM",
+               "render":                 True,
+               "record_video":           False,
+               "add_noise":              False,
              }  # CPG-rl
 
-# env_config = {}   # Defalut PD-rl
-
-env_config['render'] = True
-env_config['record_video'] = False
-env_config['add_noise'] = False 
 # env_config['competition_env'] = True
 
 # get latest model and normalization stats, and plot 
 stats_path = os.path.join(log_dir, "vec_normalize.pkl")
 model_name = get_latest_model(log_dir)
-monitor_results = load_results(log_dir)
-print(monitor_results)
-plot_results([log_dir] , 10e10, 'timesteps', LEARNING_ALG + ' ')
-plt.show() 
+
+
+# Plot results
+# monitor_results = load_results(log_dir)
+# print(monitor_results)
+# plot_results([log_dir] , 10e10, 'timesteps', LEARNING_ALG + ' ')
+# plt.show() 
+
 
 # reconstruct env 
 env = lambda: QuadrupedGymEnv(**env_config)   # Environment Setting 环境参数
