@@ -234,8 +234,8 @@ class QuadrupedGymEnv(gym.Env):
       
       # Standard bound
       # 标准边界
-      orientation_limit = np.array([1.0, 1.0, 1.0, 1.0])  # Quaternion
-      linear_velocity_limit = np.array([5.0, 1.0, 5.0])   # Max linear velocity in m/s
+      orientation_limit = np.array([1.0, 1.0, 1.0, 1.0])     # Quaternion
+      linear_velocity_limit = np.array([self.MAX_FWD_VELOCITY, 1.0, 5.0])      # Max linear velocity in m/s #FF0000 [FIXME] bound the velocity with MAX_FWD_VELOCITY
       angular_velocity_limit = np.array([10.0, 10.0, 10.0])  # Max angular velocity in rad/s
       foot_contact_limit_upp = np.array([1.0] * 4)  # Foot contacts are binary (0 or 1)
       foot_contact_limit_low = np.array([0.0] * 4)
@@ -379,15 +379,15 @@ class QuadrupedGymEnv(gym.Env):
     #       there I just set them as fixed for trials.
     energy_reward = 0 
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
-      energy_reward += np.abs(np.dot(tau,vel))
-    reward = np.sum(np.array([3,0.75])*self._time_step * rwd_act(self.robot.GetBaseLinearVelocity()[:2] - desired_vel)) \
-            + 0.5*self._time_step * rwd_act(self.robot.GetBaseOrientationRollPitchYaw()[2]) \
-            - 2*self._time_step * self.robot.GetBaseLinearVelocity()[2]**2 \
-            - 0.05*self._time_step * np.linalg.norm(self.robot.GetBaseAngularVelocity()[:2])**2 \
-            - 0.001*self._time_step * energy_reward      
+      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
+      reward = np.sum(np.array([3,0.75])*self._time_step * rwd_act(self.robot.GetBaseLinearVelocity()[:2] - desired_vel)) \
+              + 0.5*self._time_step * rwd_act(self.robot.GetBaseOrientationRollPitchYaw()[2]) \
+              - 2*self._time_step * self.robot.GetBaseLinearVelocity()[2]**2 \
+              - 0.05*self._time_step * np.linalg.norm(self.robot.GetBaseAngularVelocity()[:2])**2 \
+              - 0.001*self._time_step * energy_reward   
 
     return max(reward,0) # keep rewards positive
-
+  
   def get_distance_and_angle_to_goal(self):
     """ Helper to return distance and angle to current goal location. """
     # current object location
