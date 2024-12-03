@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     #00FFFF Setting 2:
     env_configs = {"motor_control_mode":     "CPG",
-                   "task_env":               "FLAGRUN", # "FLAGRUN", "FWD_LOCOMOTION"
+                   "task_env":               "FWD_LOCOMOTION", # "FLAGRUN", "FWD_LOCOMOTION"
                    "observation_space_mode": "LR_COURSE_OBS",
                    "terrain":                 None,       
                    "add_noise":               False,

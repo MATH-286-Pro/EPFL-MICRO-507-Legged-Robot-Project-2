@@ -1092,7 +1092,7 @@ def test_env():
                         motor_control_mode='CPG',       # 电机模式 Original is PD
                         action_repeat=100,
                         task_env="FLAGRUN",             # 任务       Task:   "FWD_LOCOMOTION", "STAND_UP", "FLAGRUN"
-                        terrain='RANDOM',               # 地形       Terrain: None, "SLOPES", "STAIRS", "GAPS", "RANDOM"
+                        terrain=None,               # 地形       Terrain: None, "SLOPES", "STAIRS", "GAPS", "RANDOM"
                         # test_flagrun=False,           # 是否测试   If flagrun
                         # add_noise=False,              # 是否加噪声 Add noise
                         )

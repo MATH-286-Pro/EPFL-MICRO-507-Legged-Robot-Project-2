@@ -63,11 +63,11 @@ interm_dir = "./logs/intermediate_models/"
 ###############################################################################################################
 #00FFFF Setting 1:
 LEARNING_ALG = "SAC"
-target_dir   = '112924102748_cpg_SAC_FWD_RANDOM_460k_continued'   #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
+target_dir   = '120224231951'   #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
 
 #00FFFF Setting 2:
 env_config = {"motor_control_mode":      "CPG",
-               "task_env":               "FWD_LOCOMOTION", 
+               "task_env":               "FLAGRUN", #"FWD_LOCOMOTION", 
                "observation_space_mode": "LR_COURSE_OBS",
                "terrain":                None, #"RANDOM",  
                "render":                 True,
