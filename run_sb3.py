@@ -53,18 +53,19 @@ if __name__ == "__main__":
     #00FFFF Setting 1:
     LEARNING_ALG = "SAC"   # or "PPO"
     NUM_ENVS     = 1       # how many pybullet environments to create for data collection  #00FF00
-    LOAD_NN      = True    # if you want to initialize training with a previous model      #00FF00 继续上次训练 continue last traning
-    LOAD_DIR     = '112924102748_cpg_SAC_FWD_460k_continued'
+    LOAD_NN      = False    # if you want to initialize training with a previous model      #00FF00 继续上次训练 continue last traning
+    LOAD_DIR     = '120224231951_cpg_SAC_FWD_670k_continued'
     SAVE_FREQ    = 10000   # Set save frequency
 
     #00FFFF Setting 2:
     env_configs = {"motor_control_mode":     "CPG",
-                   "task_env":               "FWD_LOCOMOTION", # "FLAGRUN", "FWD_LOCOMOTION"
+                   "task_env":               "FLAGRUN",  # "FLAGRUN", "FWD_LOCOMOTION"
                    "observation_space_mode": "LR_COURSE_OBS",
                    "terrain":                 None,       
                    "add_noise":               False,
                    "EPISODE_LENGTH":          15,
                    "render":                  False,  
+                   "MAX_FWD_VELOCITY":        5,
                    }
     ###############################################################################################################
 

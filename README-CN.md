@@ -65,3 +65,10 @@
 - [ ] Robust 抗干扰
 - [ ] Stairs 上楼梯
 - [ ] 对比 PPO 与 SAC 算法区别
+
+## 6.报告内容
+- CPG
+- CPG-RL
+  - Focus on one of the task: `gaps`, `stairs`, `slopes`
+  <img src = "Pictures/Task.2.png" width = "60%">
+  

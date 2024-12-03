@@ -30,7 +30,7 @@
 
 """This file implements the gym environment for a quadruped. """
 import os, inspect
-import sys #00FF00
+import sys 
 # so we can import files
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 os.sys.path.insert(0, currentdir)
@@ -73,7 +73,7 @@ VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d
 
 # Implemented observation spaces for deep reinforcement learning: 
 #   "DEFAULT":    motor angles and velocities, body orientation
-#   "LR_COURSE_OBS":  [#0000FF TODO: what should you include? what is reasonable to measure on the real system? CPG states?] 
+#   "LR_COURSE_OBS":  [ TODO: what should you include? what is reasonable to measure on the real system? CPG states?] 
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
@@ -81,7 +81,7 @@ VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #     - "FLAGRUN"
 #         move to goal, once reached, a new goal is randomly selected.
 #     - "LR_COURSE_TASK" 
-#         [#0000FF TODO: what should you train for?]
+#         [ TODO: what should you train for?]
 #         Ideally we want to command A1 to run in any direction while expending minimal energy
 #         How will you construct your reward function? 
 
@@ -175,11 +175,6 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     else:
       self._observation_noise_stdev = 0.0
 
-    # #00FF00 add on 2024.11.29
-    # # simplify parameter
-    # if task_env == "FLAGRUN": 
-    #   self._test_flagrun = True
-
     # other bookkeeping 
     self._num_bullet_solver_iterations = int(300 / action_repeat) 
     self._env_step_counter = 0
@@ -216,8 +211,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     """Set up observation space for RL."""
     """设定观测空间的上下界，超过范围就不会给 agent 训练"""
 
-    # 默认观测空间模式
-    # Defualt Observation Mode
+    # 默认观测空间模式 —— 范围
+    # Defualt Observation Mode —— Limit
     if self._observation_space_mode == "DEFAULT":         
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
@@ -226,8 +221,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4))) -  OBSERVATION_EPS)
     
-    # CPG 观测空间模式 
-    # CPG Observation Mode
+    # CPG 观测空间模式 —— 范围 
+    # CPG Observation Mode —— Limit
     elif self._observation_space_mode == "LR_COURSE_OBS": 
       # #0000FF TODO Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
@@ -237,7 +232,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       # Standard bound
       # 标准边界
       orientation_limit      = np.array([1.0, 1.0, 1.0, 1.0]) # Quaternion
-      linear_velocity_limit  = np.array([self.MAX_FWD_VELOCITY, 1.0, 5.0]) # Max linear velocity in m/s  #00FF00 change on 2024.11.29
+      linear_velocity_limit  = np.array([self.MAX_FWD_VELOCITY, 1.0, 5.0]) # Max linear velocity in m/s  
       angular_velocity_limit = np.array([10.0, 10.0, 10.0])   # Max angular velocity in rad/s
       foot_contact_limit_upp = np.array([1.0] * 4)            # Foot contacts are binary (0 or 1)
       foot_contact_limit_low = np.array([0.0] * 4)
@@ -251,6 +246,9 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       cpg_amplitude_derivative_limit = np.array([5.0] * 4)    # Rate limit for amplitude change
       cpg_phase_derivative_limit = np.array([5.0] * 4)        # Rate limit for phase change
 
+      relative_target_up      = np.array([np.inf, np.inf])
+      relative_target_low     = np.array([-np.inf, -np.inf])
+
       # Concatenate all high and low bounds
       # 使用上面的参数，构建上下界
       observation_high = np.concatenate((orientation_limit,
@@ -260,7 +258,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
                                          cpg_amplitude_limit_upp,
                                          cpg_phase_limit_upp,
                                          cpg_amplitude_derivative_limit,
-                                         cpg_phase_derivative_limit)) + OBSERVATION_EPS
+                                         cpg_phase_derivative_limit,
+                                         relative_target_up)) + OBSERVATION_EPS
 
       observation_low = np.concatenate((-orientation_limit,
                                         -linear_velocity_limit,
@@ -269,7 +268,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
                                         cpg_amplitude_limit_low,
                                         cpg_phase_limit_low,
                                         -cpg_amplitude_derivative_limit,
-                                        -cpg_phase_derivative_limit)) + OBSERVATION_EPS
+                                        -cpg_phase_derivative_limit,
+                                        relative_target_low)) + OBSERVATION_EPS
 
 
     else:
@@ -301,19 +301,27 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
                                           self.robot.GetBaseOrientation() ))
 
     elif self._observation_space_mode == "LR_COURSE_OBS":                            # #0000FF TODO
+    
+      # 如果是 flagrun 模式才获取目标位置
+      # 获取目标的距离和角度
+      # Get relative distance and angle
+      if "FLAGRUN" in self._TASK_ENV:
+          dist_to_goal, angle_to_goal = self.get_distance_and_angle_to_goal()
+      else:
+          dist_to_goal, angle_to_goal = np.inf, 0.0   # 使用 np.inf 表示目标位置无效. If not in flagrun mode, set dist to target = inf, which is like forward run
+
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),           # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
                                           self.robot.GetBaseLinearVelocity(),
                                           self.robot.GetBaseAngularVelocity(),
-                                          self.robot.GetContactInfo()[3],            # #FF0000 Wrong! The contact info is a tuple with the first two elements scalars and the last two lists, making the concatenation failed. 
+                                          self.robot.GetContactInfo()[3],            # Wrong! The contact info is a tuple with the first two elements scalars and the last two lists, making the concatenation failed. 
                                                                                      # for now it returns boolean for each foot in contact (1) or not (0)
                                           self._cpg.get_r(),                         # CPG amplitude for each foot
                                           self._cpg.get_theta(),                     # CPG phase for each foot
                                           self._cpg.get_dr(),                        # Amplitude derivatives for each foot
-                                          self._cpg.get_dtheta()), axis=None)        # Phase derivatives for each foot 
+                                          self._cpg.get_dtheta(),                    # Phase derivatives for each foot 
+                                          np.array([dist_to_goal, angle_to_goal])    # relative target distance + angle
+                                          ), axis=None,)        
       
-
-      # #0000FF TODO Get observation from robot. What are reasonable measurements we could get on hardware?
-      # if using the CPG, you can include states with self._cpg.get_r(), for example
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -385,7 +393,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     # current object location
     base_pos = self.robot.GetBasePosition()
     yaw = self.robot.GetBaseOrientationRollPitchYaw()[2]
-    goal_vec = self._goal_location #FF0000 Error 出现报错
+    goal_vec = self._goal_location 
     dist_to_goal = np.linalg.norm(base_pos[0:2]-goal_vec)
 
     # angle to goal (from current heading)
