@@ -51,10 +51,10 @@ if __name__ == "__main__":
 
     ###############################################################################################################
     #00FFFF Setting 1:
-    LEARNING_ALG = "SAC"   # or "PPO"
-    NUM_ENVS     = 1       # how many pybullet environments to create for data collection  #00FF00
-    LOAD_NN      = False    # if you want to initialize training with a previous model      #00FF00 继续上次训练 continue last traning
-    LOAD_DIR     = '120224231951_cpg_SAC_FWD_670k_continued'
+    LEARNING_ALG = "SAC"   # or "PPO" 
+    NUM_ENVS     = 1       # how many pybullet environments to create for data collection   #00FF00
+    LOAD_NN      = True    # if you want to initialize training with a previous model      #00FF00 继续上次训练 continue last traning
+    LOAD_DIR     = '120324141418_cpg_SAC_FWD_1000k'
     SAVE_FREQ    = 10000   # Set save frequency
 
     #00FFFF Setting 2:
@@ -65,7 +65,7 @@ if __name__ == "__main__":
                    "add_noise":               False,
                    "EPISODE_LENGTH":          15,
                    "render":                  False,  
-                   "MAX_FWD_VELOCITY":        5,
+                   "MAX_FWD_VELOCITY":        6,
                    }
     ###############################################################################################################
 

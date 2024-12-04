@@ -308,7 +308,11 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       if "FLAGRUN" in self._TASK_ENV:
           dist_to_goal, angle_to_goal = self.get_distance_and_angle_to_goal()
       else:
-          dist_to_goal, angle_to_goal = np.inf, 0.0   # 使用 np.inf 表示目标位置无效. If not in flagrun mode, set dist to target = inf, which is like forward run
+          # dist_to_goal, angle_to_goal = 0.0, 0.0   
+          dist_to_goal, angle_to_goal = 1000.0, 0.0   
+          # 注意，训练的时候是 1000 之后就都要保持这个
+          # 因为强化学习仅探索了 1000 附近的值，但是没有探索其他地方的值
+          # If not in flagrun mode, set dist to target = 1000, which is like forward run
 
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),           # from paper 2 we need (full case): body state (orientation, linear and angular velocities), and foot contact booleans and the CPGs states
                                           self.robot.GetBaseLinearVelocity(),

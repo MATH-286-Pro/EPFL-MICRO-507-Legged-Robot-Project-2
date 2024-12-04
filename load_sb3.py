@@ -63,16 +63,18 @@ interm_dir = "./logs/intermediate_models/"
 ###############################################################################################################
 #00FFFF Setting 1:
 LEARNING_ALG = "SAC"
-target_dir   = '120224231951'   #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
+target_dir   = '222222222222'   #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
 
 #00FFFF Setting 2:
 env_config = {"motor_control_mode":      "CPG",
-               "task_env":               "FLAGRUN", #"FWD_LOCOMOTION", 
+               "task_env":               "FLAGRUN", #"FWD_LOCOMOTION", "FLAGRUN"
                "observation_space_mode": "LR_COURSE_OBS",
                "terrain":                None, #"RANDOM",  
                "render":                 True,
                "record_video":           False,
                "add_noise":              False,
+               "MAX_FWD_VELOCITY":       6,
+               "EPISODE_LENGTH":         15,
              } 
 
 # env_config['competition_env'] = True
