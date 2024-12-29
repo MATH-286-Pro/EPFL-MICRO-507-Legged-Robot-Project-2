@@ -48,13 +48,15 @@ from env.quadruped_gym_env import QuadrupedGymEnv
 if __name__ == "__main__":
     
     USE_GPU      = True    # make sure to install all necessary drivers 
+    COLAB_PATH   = './drive/MyDrive/MICRO-507-Project-2/'    # You might need to change your folder name on Google Drive to use this code 🤔
 
     ###############################################################################################################
     #00FFFF Setting 1:
     LEARNING_ALG = "SAC"   # or "PPO"
-    NUM_ENVS     = 1       # how many pybullet environments to create for data collection  #00FF00
-    LOAD_NN      = False   # if you want to initialize training with a previous model      #00FF00 Continue last training 继续上次训练
-    LOAD_DIR     = ''
+    NUM_ENVS     = 1       # how many pybullet environments to create for data collection   #00FF00
+    LOAD_NN      = True    # if you want to initialize training with a previous model       #00FF00 Continue last training 继续上次训练
+    LOAD_DIR     = '122924165420_cpg_SAC_NoNoise_FLAT_new_CoLab'
+    On_CoLab     = False   # Trained on CoLab or not
     SAVE_FREQ    = 10000   # Set save frequency
 
     #00FFFF Setting 2:
@@ -62,9 +64,9 @@ if __name__ == "__main__":
                    "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", "FLAGRUN", None
                    "observation_space_mode": "LR_COURSE_OBS",
                    "render":                  False,  
-                   "terrain":                 None,        # "SLOPES"
+                   "terrain":                 'SLOPES',        # "SLOPES"
                    "add_noise":               False,
-                   "EPISODE_LENGTH":          20,
+                   "EPISODE_LENGTH":          14,
                    "MAX_FWD_VELOCITY":        8,
                    }
     ###############################################################################################################
@@ -75,10 +77,13 @@ if __name__ == "__main__":
         gpu_arg = "cpu"
 
     if LOAD_NN:
-        interm_dir = "./logs/intermediate_models/"
+        if On_CoLab: 
+            interm_dir = COLAB_PATH + "logs/intermediate_models/"
+        if not On_CoLab:
+            interm_dir = "./logs/intermediate_models/"
         log_dir = interm_dir +  LOAD_DIR                          
-        stats_path = os.path.join(log_dir, "vec_normalize.pkl")
-        model_name = get_latest_model(log_dir)
+        stats_path = os.path.join(log_dir, "vec_normalize.pkl")     # Choose .pkl file
+        model_name = get_latest_model(log_dir)                      # Choose last model.zip
     
 
     ###############################################################################################################
@@ -86,14 +91,17 @@ if __name__ == "__main__":
     time_str          = datetime.now().strftime("%m%d%y%H%M%S")
     motor_control_str = env_configs["motor_control_mode"].lower()                       # 'cpg' or 'defualt' 
     noise_str         = "Noise" if env_configs["add_noise"] else "NoNoise"
-    terrain_str       = env_configs["terrain"] if env_configs["terrain"] else "None"
+    terrain_str       = env_configs["terrain"] if env_configs["terrain"] else "FLAT"
     con_str           = "con" if LOAD_NN else "new"
-    
+    console_str       = "CoLab" if On_CoLab else "Local"
+
     # Combine
-    auto_name = f"{time_str}_{motor_control_str}_{LEARNING_ALG}_{noise_str}_{terrain_str}_{con_str}"
-    
-    # Path
+    auto_name = f"{time_str}_{motor_control_str}_{LEARNING_ALG}_{noise_str}_{terrain_str}_{con_str}_{console_str}"
     SAVE_PATH = f'./logs/intermediate_models/{auto_name}/'
+
+    # Path
+    if On_CoLab:
+        SAVE_PATH = COLAB_PATH + SAVE_PATH
     ###############################################################################################################
 
     os.makedirs(SAVE_PATH, exist_ok=True)
@@ -106,8 +114,8 @@ if __name__ == "__main__":
 
     if LOAD_NN:
         env = lambda: QuadrupedGymEnv(**env_configs)
-        env = make_vec_env(env, monitor_dir=SAVE_PATH, n_envs=NUM_ENVS)
-        env = VecNormalize.load(stats_path, env)
+        env = make_vec_env(env, monitor_dir=SAVE_PATH, n_envs=NUM_ENVS)      # Create a vectorized environment
+        env = VecNormalize.load(stats_path, env)                             # Load previous normalization stats
 
     # Multi-layer perceptron (MLP) policy of two layers of size _,_ 
     policy_kwargs = dict(net_arch=[256,256])
