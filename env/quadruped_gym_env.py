@@ -107,6 +107,9 @@ MU_LOW = 1
 MU_UPP = 2
 
 
+# self.robot 这个类来自于 quadruped.py，记录了机器人的信息
+# The class self.robot comes from quadruped.py, which records the information of the robot
+
 class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is a class inherit from gym.Env
   """The gym environment for a quadruped {Unitree A1}.
 
@@ -174,11 +177,6 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       self._observation_noise_stdev = 0.01 #
     else:
       self._observation_noise_stdev = 0.0
-
-    # #00FF00 add on 2024.11.29
-    # # simplify parameter
-    # if task_env == "FLAGRUN": 
-    #   self._test_flagrun = True
 
     # other bookkeeping 
     self._num_bullet_solver_iterations = int(300 / action_repeat) 
@@ -356,7 +354,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
   #00FF00 默认奖励函数
   #00FF00 Defalut reward function
   def _reward_fwd_locomotion(self, des_vel_x=None):
-    """Learn forward locomotion"""
+    """Learn forward locomotion"""                                                       #00FFFF
     vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
     # If you want to track a desired velocity 
     # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
@@ -367,6 +365,9 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     # don't drift laterally  惩罚机器人在侧向（即 𝑦 方向）上偏移的
     drift_penalty = 0.01 * abs(self.robot.GetBasePosition()[1]) 
 
+    # Pitch 轴速度变化惩罚 #00FF00 #00FF00
+    pitch_penalty = 0.01 * abs(self.robot.GetBaseAngularVelocity()[1])
+
     # minimize energy 能量
     energy_reward = 0 
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
@@ -376,6 +377,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
              - yaw_penalty \
              - drift_penalty \
              - 0.01 * energy_reward \
+             - pitch_penalty \
              - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
 
     return max(reward,0) # keep rewards positive
@@ -431,11 +433,50 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
   
   #00FF00 奖励函数2 命令机器人完成课程任务
   #00FF00 Reward Function 2: Ask robot to do course task
-  def _reward_lr_course(self):
-    """ Implement your reward function here. How will you improve upon the above? """
-    # #0000FF TODO add your reward function. 奖励函数
-    return 0
+  #0000FF TODO add your reward function. 奖励函数
 
+  def _reward_lr_course(self, des_vel_x = 2.0):
+    """Learn forward locomotion"""
+    vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
+    # If you want to track a desired velocity 
+    # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
+
+    # minimize yaw (go straight) YAW 偏航角
+    yaw_penalty = 0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
+
+    # penalize pitch axis angular velocity change 惩罚 Pitch 轴角速度变化
+    pitch_vel_penalty = 0.01 * abs(self.robot.GetBaseAngularVelocity()[1])
+
+    # don't drift laterally  惩罚机器人在侧向（即 𝑦 方向）上偏移的
+    drift_penalty = 0.01 * abs(self.robot.GetBasePosition()[1]) 
+
+    # slip penalty 滑动惩罚
+    feet_velocity = self.robot.GetFeetVelocities()
+    feet_contact  = self.robot.GetContactInfo()[3]
+    for i in range(4):
+      if feet_contact[i] == 1:
+        slip_penalty = 0.05 * np.linalg.norm(feet_velocity[i][0:2])
+      else:
+        slip_penalty = 0
+
+    # minimize energy 能量
+    energy_reward = 0 
+    for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
+      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step           # P * t
+
+    reward = + vel_tracking_reward \
+             - yaw_penalty \
+             - drift_penalty \
+             - 0.01 * energy_reward \
+             - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1])) \
+             - slip_penalty \
+             - pitch_vel_penalty
+    return max(reward,0) # keep rewards positive
+
+
+
+
+  ######################################################################################
   #00FF00 
   # 不同任务选择：即不同奖励函数
   # Different Task Selection：Different reward function
@@ -668,6 +709,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
         if self._is_render:
           print('ground friction coefficient is', ground_mu_k)
 
+      #00FF00 修改地形参数
+      #00FF00 Modify terrain parameters
       if self._terrain is not None:
         if self._terrain == "SLOPES":
           self.add_slopes(pitch=0.2)

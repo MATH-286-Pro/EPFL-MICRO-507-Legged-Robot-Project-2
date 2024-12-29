@@ -193,6 +193,18 @@ class Quadruped(object):
     _, angVel = self._pybullet_client.getBaseVelocity(self.quadruped)
     return np.asarray(angVel)
 
+  #00FF00
+  def GetFeetVelocities(self):
+      """ Get the velocity of the feet in the world frame. """
+      foot_velocities = []
+      for foot_id in self._foot_link_ids:
+          # 获取脚的状态，包括线速度和角速度
+          _, _, _, _, _, _, linear_vel, _ = self._pybullet_client.getLinkState(
+              self.quadruped, foot_id, computeLinkVelocity=1
+          )
+          foot_velocities.append(linear_vel)  # 保存线速度向量
+      return foot_velocities
+
   def GetMotorAngles(self):
     """Get quadruped motor angles at the current moment.
 
@@ -243,10 +255,10 @@ class Quadruped(object):
     (3) normal force at each foot (0 if in the air) 
     (4) boolean for each foot in contact (1) or not (0)
     """
-    numValidContacts = 0
+    numValidContacts   = 0
     numInvalidContacts = 0
-    feetNormalForces = [0,0,0,0]
-    feetInContactBool = [0,0,0,0]
+    feetNormalForces   = [0,0,0,0]
+    feetInContactBool  = [0,0,0,0]
     for c in self._pybullet_client.getContactPoints():
       # if bodyUniqueIdA is same as bodyUniqueIdB, self collision
       if c[1] == c[2]:
@@ -491,14 +503,14 @@ class Quadruped(object):
     """
     num_joints = self._pybullet_client.getNumJoints(self.quadruped)
     self._chassis_link_ids = [-1] # just base link
-    self._leg_link_ids = []   # all leg links (hip, thigh, calf)
-    self._motor_link_ids = [] # all leg links (hip, thigh, calf)
+    self._leg_link_ids     = []   # all leg links (hip, thigh, calf)
+    self._motor_link_ids   = [] # all leg links (hip, thigh, calf)
 
-    self._joint_ids=[]      # all motor joints
-    self._hip_ids = []      # hip joint indices only
-    self._thigh_ids = []    # thigh joint indices only
-    self._calf_ids = []     # calf joint indices only
-    self._foot_link_ids = [] # foot joint indices
+    self._joint_ids = []      # all motor joints
+    self._hip_ids   = []      # hip joint indices only
+    self._thigh_ids = []      # thigh joint indices only
+    self._calf_ids  = []      # calf joint indices only
+    self._foot_link_ids = []  # foot joint indices  #FF0000
 
     for i in range(num_joints):
       joint_info = self._pybullet_client.getJointInfo(self.quadruped, i)

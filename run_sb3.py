@@ -53,18 +53,18 @@ if __name__ == "__main__":
     #00FFFF Setting 1:
     LEARNING_ALG = "SAC"   # or "PPO"
     NUM_ENVS     = 1       # how many pybullet environments to create for data collection  #00FF00
-    LOAD_NN      = True    # if you want to initialize training with a previous model      #00FF00 继续上次训练 continue last traning
-    LOAD_DIR     = '120424202507_cpg_SAC_Noise_1000k_con'
+    LOAD_NN      = False   # if you want to initialize training with a previous model      #00FF00 Continue last training 继续上次训练
+    LOAD_DIR     = ''
     SAVE_FREQ    = 10000   # Set save frequency
 
     #00FFFF Setting 2:
     env_configs = {"motor_control_mode":     "CPG",
-                   "task_env":               "FWD_LOCOMOTION", # "FLAGRUN", "FWD_LOCOMOTION"
+                   "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", "FLAGRUN", None
                    "observation_space_mode": "LR_COURSE_OBS",
                    "render":                  False,  
-                   "terrain":                 "SLOPES", #None,        # "SLOPES"
-                   "add_noise":               True,
-                   "EPISODE_LENGTH":          15,
+                   "terrain":                 None,        # "SLOPES"
+                   "add_noise":               False,
+                   "EPISODE_LENGTH":          20,
                    "MAX_FWD_VELOCITY":        8,
                    }
     ###############################################################################################################
@@ -76,20 +76,32 @@ if __name__ == "__main__":
 
     if LOAD_NN:
         interm_dir = "./logs/intermediate_models/"
-        log_dir = interm_dir +  LOAD_DIR                           # add path #00FF00 继续上次训练 continue last traning
+        log_dir = interm_dir +  LOAD_DIR                          
         stats_path = os.path.join(log_dir, "vec_normalize.pkl")
         model_name = get_latest_model(log_dir)
+    
 
-    # directory to save policies and normalization parameters
-    SAVE_PATH = './logs/intermediate_models/'+ datetime.now().strftime("%m%d%y%H%M%S") + '/'
+    ###############################################################################################################
+    # Auto naming
+    time_str          = datetime.now().strftime("%m%d%y%H%M%S")
+    motor_control_str = env_configs["motor_control_mode"].lower()                       # 'cpg' or 'defualt' 
+    noise_str         = "Noise" if env_configs["add_noise"] else "NoNoise"
+    terrain_str       = env_configs["terrain"] if env_configs["terrain"] else "None"
+    con_str           = "con" if LOAD_NN else "new"
+    
+    # Combine
+    auto_name = f"{time_str}_{motor_control_str}_{LEARNING_ALG}_{noise_str}_{terrain_str}_{con_str}"
+    
+    # Path
+    SAVE_PATH = f'./logs/intermediate_models/{auto_name}/'
+    ###############################################################################################################
+
     os.makedirs(SAVE_PATH, exist_ok=True)
-    # checkpoint to save policy network periodically
-    checkpoint_callback = CheckpointCallback(save_freq=SAVE_FREQ, save_path=SAVE_PATH,name_prefix='rl_model', verbose=2) 
+    checkpoint_callback = CheckpointCallback(save_freq=SAVE_FREQ, save_path=SAVE_PATH, name_prefix='rl_model', verbose=2) 
 
     # create Vectorized gym environment
-    env = lambda: QuadrupedGymEnv(**env_configs)                                          #00FFFF Setting 2: environment 
-    env = make_vec_env(env, monitor_dir=SAVE_PATH,n_envs=NUM_ENVS, vec_env_cls=SubprocVecEnv)
-    # normalize observations to stabilize learning (why?) # [NOTE]
+    env = lambda: QuadrupedGymEnv(**env_configs)     
+    env = make_vec_env(env, monitor_dir=SAVE_PATH, n_envs=NUM_ENVS, vec_env_cls=SubprocVecEnv)
     env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=100.)
 
     if LOAD_NN:
@@ -99,27 +111,28 @@ if __name__ == "__main__":
 
     # Multi-layer perceptron (MLP) policy of two layers of size _,_ 
     policy_kwargs = dict(net_arch=[256,256])
-    # What are these hyperparameters? Check here: https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
+    
+    # PPO config
     n_steps = 4096 
     learning_rate = lambda f: 1e-4 
-    ppo_config = {  "gamma":0.99, 
-                    "n_steps": int(n_steps/NUM_ENVS), 
-                    "ent_coef":0.0, 
-                    "learning_rate":learning_rate, 
-                    "vf_coef":0.5,
-                    "max_grad_norm":0.5, 
-                    "gae_lambda":0.95, 
-                    "batch_size":128,
-                    "n_epochs":10, 
-                    "clip_range":0.2, 
-                    "clip_range_vf":1,
-                    "verbose":1, 
-                    "tensorboard_log":None, 
-                    "_init_setup_model":True, 
-                    "policy_kwargs":policy_kwargs,
-                    "device": gpu_arg}
+    ppo_config = { "gamma":0.99, 
+                   "n_steps": int(n_steps/NUM_ENVS), 
+                   "ent_coef":0.0, 
+                   "learning_rate":learning_rate, 
+                   "vf_coef":0.5,
+                   "max_grad_norm":0.5, 
+                   "gae_lambda":0.95, 
+                   "batch_size":128,
+                   "n_epochs":10, 
+                   "clip_range":0.2, 
+                   "clip_range_vf":1,
+                   "verbose":1, 
+                   "tensorboard_log":None, 
+                   "_init_setup_model":True, 
+                   "policy_kwargs":policy_kwargs,
+                   "device": gpu_arg}
 
-    # What are these hyperparameters? Check here: https://stable-baselines3.readthedocs.io/en/master/modules/sac.html
+    # SAC config
     sac_config={"learning_rate":1e-4,
                 "buffer_size":300000,
                 "batch_size":256,
@@ -149,13 +162,10 @@ if __name__ == "__main__":
             model = SAC.load(model_name, env)
         print("\nLoaded model", model_name, "\n")
 
-    # Learn and save (may need to train for longer)
-
-    model.learn(total_timesteps=1000000, log_interval=1,callback=checkpoint_callback) #00FF00 最大训练步长
-
-    # Don't forget to save the VecNormalize statistics when saving the agent
+    # Learn and save 
+    model.learn(total_timesteps=1000000, log_interval=1, callback=checkpoint_callback) 
     model.save( os.path.join(SAVE_PATH, "rl_model" ) ) 
     env.save(os.path.join(SAVE_PATH, "vec_normalize.pkl" )) 
-    if LEARNING_ALG == "SAC": # save replay buffer 
+    if LEARNING_ALG == "SAC":
         model.save_replay_buffer(os.path.join(SAVE_PATH,"off_policy_replay_buffer"))
 
