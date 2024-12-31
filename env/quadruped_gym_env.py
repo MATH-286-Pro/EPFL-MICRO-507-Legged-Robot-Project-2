@@ -366,7 +366,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     drift_penalty = 0.01 * abs(self.robot.GetBasePosition()[1]) 
 
     # Pitch 轴速度变化惩罚 #00FF00 #00FF00
-    pitch_penalty = 0.01 * abs(self.robot.GetBaseAngularVelocity()[1])
+    pitch_penalty = 0.1 * abs(self.robot.GetBaseAngularVelocity()[1])
 
     # minimize energy 能量
     energy_reward = 0 

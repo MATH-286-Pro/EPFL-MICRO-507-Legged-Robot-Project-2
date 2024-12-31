@@ -69,7 +69,7 @@ target_dir   = '222222222222'
 env_config = { "motor_control_mode":     "CPG",
                "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", 
                "observation_space_mode": "LR_COURSE_OBS",
-               "terrain":                None, #"SLOPES", #"SLOPES", #"RANDOM",  
+               "terrain":                'SLOPES', #"SLOPES", #"SLOPES", #"RANDOM",  
                "render":                 True,
                "record_video":           False, #False,
                "add_noise":              False,

@@ -55,9 +55,9 @@ if __name__ == "__main__":
     LEARNING_ALG = "SAC"   # or "PPO"
     NUM_ENVS     = 1       # how many pybullet environments to create for data collection   #00FF00
     LOAD_NN      = True    # if you want to initialize training with a previous model       #00FF00 Continue last training 继续上次训练
-    LOAD_DIR     = '122924165420_cpg_SAC_NoNoise_FLAT_new_CoLab'
+    LOAD_DIR     = '120524125617_cpg_SAC_SLOP_1000k_con_old'
     On_CoLab     = False   # Trained on CoLab or not
-    SAVE_FREQ    = 10000   # Set save frequency
+    SAVE_FREQ    = 20000   # Set save frequency
 
     #00FFFF Setting 2:
     env_configs = {"motor_control_mode":     "CPG",
