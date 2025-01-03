@@ -53,20 +53,20 @@ if __name__ == "__main__":
     ###############################################################################################################
     #00FFFF Setting 1:
     LEARNING_ALG = "SAC"   # or "PPO"
-    NUM_ENVS     = 1       # how many pybullet environments to create for data collection   #00FF00
+    NUM_ENVS     = 2       # how many pybullet environments to create for data collection   #00FF00
     LOAD_NN      = True    # if you want to initialize training with a previous model       #00FF00 Continue last training 继续上次训练
-    LOAD_DIR     = '120524125617_cpg_SAC_SLOP_1000k_con_old'
+    LOAD_DIR     = '123124205607_diy_SAC_NoNoise_FLAT_new_Local'
     On_CoLab     = False   # Trained on CoLab or not
-    SAVE_FREQ    = 20000   # Set save frequency
+    SAVE_FREQ    = 20000/NUM_ENVS   # Set save frequency
 
     #00FFFF Setting 2:
-    env_configs = {"motor_control_mode":     "CPG",
+    env_configs = {"motor_control_mode":     "DIY",
                    "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", "FLAGRUN", None
                    "observation_space_mode": "LR_COURSE_OBS",
                    "render":                  False,  
-                   "terrain":                 'SLOPES',        # "SLOPES"
+                   "terrain":                 None, #'SLOPES',        # "SLOPES"
                    "add_noise":               False,
-                   "EPISODE_LENGTH":          14,
+                   "EPISODE_LENGTH":          15,
                    "MAX_FWD_VELOCITY":        8,
                    }
     ###############################################################################################################
@@ -88,15 +88,15 @@ if __name__ == "__main__":
 
     ###############################################################################################################
     # Auto naming
-    time_str          = datetime.now().strftime("%m%d%y%H%M%S")
+    time_str          = datetime.now().strftime("%y%m%d%H%M")
     motor_control_str = env_configs["motor_control_mode"].lower()                       # 'cpg' or 'defualt' 
     noise_str         = "Noise" if env_configs["add_noise"] else "NoNoise"
     terrain_str       = env_configs["terrain"] if env_configs["terrain"] else "FLAT"
-    con_str           = "con" if LOAD_NN else "new"
     console_str       = "CoLab" if On_CoLab else "Local"
+    con_str           = "con" if LOAD_NN else "new"
 
     # Combine
-    auto_name = f"{time_str}_{motor_control_str}_{LEARNING_ALG}_{noise_str}_{terrain_str}_{con_str}_{console_str}"
+    auto_name = f"{time_str}_{motor_control_str}_{LEARNING_ALG}_{noise_str}_{terrain_str}_{console_str}_{con_str}"
     SAVE_PATH = f'./logs/intermediate_models/{auto_name}/'
 
     # Path

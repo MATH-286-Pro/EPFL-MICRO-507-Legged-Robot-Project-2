@@ -283,6 +283,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     elif self._motor_control_mode in ["CPG"]:                          # 电机的工作模式，工作空间维度 = 8  (每条腿末端只有 x z 两个自由度)
       action_dim = 8                                                   # Motor mode     workspace dimension = 8 (2 DOF on x, direction each leg)
 
+    elif self._motor_control_mode in ["DIY"]:                          # 电机的工作模式，工作空间维度 = 12 (每条腿3个电机)  #FF0000 测试
+      action_dim = 12                                                  # Motor mode     workspace dimension = 12 (3 motors each leg)
     else:
       raise ValueError("motor control mode " + self._motor_control_mode + " not implemented yet.")
     action_high = np.array([1] * action_dim)
@@ -436,7 +438,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
   #0000FF TODO add your reward function. 奖励函数
 
   def _reward_lr_course(self, des_vel_x = 2.0):
-    """Learn forward locomotion"""
+    """Learn forward locomotion"""                                                       #00FFFF
     vel_tracking_reward = 0.1 * np.clip(self.robot.GetBaseLinearVelocity()[0], 0.2, 1.0) #00FFFF Changed gain from 0.1 to 0.15 to 0.01
     # If you want to track a desired velocity 
     # vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
@@ -444,20 +446,12 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     # minimize yaw (go straight) YAW 偏航角
     yaw_penalty = 0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
 
-    # penalize pitch axis angular velocity change 惩罚 Pitch 轴角速度变化
-    pitch_vel_penalty = 0.01 * abs(self.robot.GetBaseAngularVelocity()[1])
-
     # don't drift laterally  惩罚机器人在侧向（即 𝑦 方向）上偏移的
     drift_penalty = 0.01 * abs(self.robot.GetBasePosition()[1]) 
 
-    # slip penalty 滑动惩罚
-    feet_velocity = self.robot.GetFeetVelocities()
-    feet_contact  = self.robot.GetContactInfo()[3]
-    for i in range(4):
-      if feet_contact[i] == 1:
-        slip_penalty = 0.05 * np.linalg.norm(feet_velocity[i][0:2])
-      else:
-        slip_penalty = 0
+    # 轴速度变化惩罚 #00FF00 #00FF00
+    pitch_velocity_penalty = abs(self.robot.GetBaseAngularVelocity()[1])
+    roll_velocity_penalty = abs(self.robot.GetBaseAngularVelocity()[0])
 
     # minimize energy 能量
     energy_reward = 0 
@@ -468,11 +462,11 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
              - yaw_penalty \
              - drift_penalty \
              - 0.01 * energy_reward \
-             - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1])) \
-             - slip_penalty \
-             - pitch_vel_penalty
-    return max(reward,0) # keep rewards positive
+             - 0.1 * pitch_velocity_penalty \
+             - 0.1 * roll_velocity_penalty \
+             - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
 
+    return max(reward,0) # keep rewards positive
 
 
 
@@ -508,6 +502,9 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
     elif self._motor_control_mode == "CPG":
       action = self.ScaleActionToCPGStateModulations(action)  # 使用 ScaleActionToCPGStateModulations 电机控制函数 #05FF90
                                                               # use ScaleActionToCPGStateModulations motor control function
+    elif self._motor_control_mode == "DIY":
+      action = self.ScaleActionToDIYStateModulations(action)  # 使用 ScaleActionToDIYStateModulations 电机控制函数                  #05FF90 #ff0000
+                                                              # use ScaleActionToDIYStateModulations motor control function
     else:
       raise ValueError("RL motor control mode" + self._motor_control_mode + "not implemented yet.")
     return action
@@ -635,6 +632,96 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
       action[group_indices] = tau
 
     return action
+
+  #FF0000 测试
+  def ScaleActionToDIYStateModulations(self, actions):
+    """Scale RL action to a custom modulation allowing leg abduction/adduction."""
+    # Clip actions
+    u = np.clip(actions, -1, 1)
+
+    # Scale parameters
+    omega = self._scale_helper(u[0:4], 5, 4.5 * 2 * np.pi)
+    self._cpg.set_omega_rl(omega)
+
+    mus = self._scale_helper(u[4:8], MU_LOW**2, MU_UPP**2)
+    self._cpg.set_mu_rl(mus)
+
+    # Scale abduction angles (in radians)
+    abduction_angles = self._scale_helper(
+        u[8:12], -np.deg2rad(30), +np.deg2rad(30)
+    )    # 设定角度限制
+
+    # Integrate CPG and calculate foot positions (xs, zs remain as before)
+    xs, zs = self._cpg.update()
+
+    # Update target positions with abduction angles
+    foot_y = self._robot_config.HIP_LINK_LENGTH
+    sideSign = np.array([-1, 1, -1, 1])  # Correct hip sign
+    action = np.zeros(12)
+
+    max_y_velocity = 1.0  # 设置 y 方向速度的最大变化范围
+    previous_abduction_offset = [0.0] * 4  # 用于保存上一次的 abduction_offset
+
+    for i in range(4):
+        # Convert abduction angle to y-offset (if needed, depends on IK model)
+        x = xs[i]
+        z = zs[i]
+        y = sideSign[i] * foot_y  # Standard offset
+        
+        # Calculate the new abduction offset
+        target_abduction_offset = np.sin(abduction_angles[i]) * foot_y
+        
+        # Limit the rate of change of abduction_offset
+        dt = 0.05  # Time step
+        max_delta_offset = max_y_velocity * dt
+        abduction_offset = np.clip(
+            target_abduction_offset - previous_abduction_offset[i],
+            -max_delta_offset,
+            max_delta_offset
+        ) + previous_abduction_offset[i]
+
+        # Update y with the limited abduction_offset
+        y += abduction_offset
+
+        # Save the current abduction_offset for the next iteration
+        previous_abduction_offset[i] = abduction_offset
+
+        # Compute target position and IK
+        p_des = np.array([x, y, z])
+        q_des = self.robot.ComputeInverseKinematics(i, p_des)
+
+        # Compute real joint angles and velocities
+        group_indices = np.arange(3 * i, 3 * i + 3)
+        q_real = self.robot.GetMotorAngles()[group_indices]
+        dq_real = self.robot.GetMotorVelocities()[group_indices]
+
+        # Compute real position and velocity in Cartesian space
+        J, p_real = self.robot.ComputeJacobianAndPosition(i)
+        v_real = J @ dq_real
+
+        # Apply velocity constraint in Cartesian space (y-direction)
+        v_des = np.zeros(3)  # Default desired velocity
+
+        # Compute torque
+        tau = np.zeros(3)
+
+        # Add joint PD contribution
+        kp = self._robot_config.MOTOR_KP[group_indices]
+        kd = self._robot_config.MOTOR_KD[group_indices]
+        tau += kp * (q_des - q_real) + kd * (np.zeros(3) - dq_real)
+
+        # Add Cartesian PD contribution
+        kp_cartesian = self._robot_config.kpCartesian
+        kd_cartesian = self._robot_config.kdCartesian
+        tau += J.T @ (kp_cartesian @ (p_des - p_real) + kd_cartesian @ (v_des - v_real))
+
+        # Assign torque to the corresponding leg
+        action[group_indices] = tau
+
+    return action
+
+
+
 
 
   def step(self, action):
@@ -1131,8 +1218,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
 # Define Test Environment
 def test_env():
   env = QuadrupedGymEnv(render=True, 
-                        on_rack=False,                  # 是否被挂起 Is robot hang up  # Original is True
-                        motor_control_mode='CPG',       # 电机模式 Original is PD
+                        on_rack=True,                   # 是否被挂起 Is robot hang up  # Original is True
+                        motor_control_mode='DIY',       # 电机模式 Original is PD
                         action_repeat=100,
                         task_env="FLAGRUN",             # 任务       Task:   "FWD_LOCOMOTION", "STAND_UP", "FLAGRUN"
                         terrain=None,               # 地形       Terrain: None, "SLOPES", "STAIRS", "GAPS", "RANDOM"

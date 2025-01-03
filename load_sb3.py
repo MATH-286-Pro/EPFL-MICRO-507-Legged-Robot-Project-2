@@ -64,12 +64,12 @@ interm_dir = "./logs/intermediate_models/"
 #00FFFF Setting 1:
 LEARNING_ALG = "SAC"
 # target_dir   = '121024143554'   #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
-target_dir   = '222222222222'
+target_dir   = '123124205607_diy_SAC_NoNoise_FLAT_new_Local'
 #00FFFF Setting 2:
-env_config = { "motor_control_mode":     "CPG",
+env_config = { "motor_control_mode":     "DIY",
                "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", 
                "observation_space_mode": "LR_COURSE_OBS",
-               "terrain":                'SLOPES', #"SLOPES", #"SLOPES", #"RANDOM",  
+               "terrain":                None, #SLOPES', #"SLOPES", #"SLOPES", #"RANDOM",  
                "render":                 True,
                "record_video":           False, #False,
                "add_noise":              False,
