@@ -45,6 +45,12 @@ from matplotlib import pyplot as plt
 from env.hopf_network import HopfNetwork
 from env.quadruped_gym_env import QuadrupedGymEnv
 
+#####################################################################
+import os
+# 强制使用 Nvidia GPU
+os.environ["__NV_PRIME_RENDER_OFFLOAD"] = "1"
+os.environ["__GLX_VENDOR_LIBRARY_NAME"] = "nvidia"
+#####################################################################
 
 ADD_CARTESIAN_PD = True 
 TIME_STEP = 0.001  # Simulate in 1ms
@@ -55,14 +61,15 @@ sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negati
 # 环境类创建过程中会一起创建 四足机器人实例  
 # (Cearte env class)
 # (Create the quadruped robot class at the same time)
-env = QuadrupedGymEnv(render=True,              # visualize
+env = QuadrupedGymEnv(
+                    render=True,                # visualize
                     on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
                     time_step=TIME_STEP,
                     action_repeat=1,
                     motor_control_mode="TORQUE",
                     add_noise=False,    # start in ideal conditions
-                    # record_video=True
+                    record_video=True
                     )
 
 # 创建——中央发生器类 
@@ -72,8 +79,8 @@ cpg = HopfNetwork(time_step=TIME_STEP)
 # cpg.use_RL = True #00FF00 调用强化学习测试
 cpg._set_gait("TROT") #00FF00 "TROT" "PACE" "BOUND" "WALK"
 
-
-TEST_STEPS = int(10 / (TIME_STEP))
+TotalTime  = 7
+TEST_STEPS = int(TotalTime / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [#0000FF TODO] initialize data structures to save CPG and robot states
@@ -89,9 +96,13 @@ kdCartesian = np.diag([20]*3)
 
 
 # Data record
-foot_positions  = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_coordinates]
-base_positions  = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
-base_velocities = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
+cpg_states           = np.zeros((TEST_STEPS, 4, 4))  # Shape: [time_steps, 4_legs, 4_states (r,theta,r_dot,theta_dot)]
+foot_positions_real  = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_coordinates]
+foot_positions_des   = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_coordinates]
+foot_angles_real     = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_angles]
+foot_angles_des      = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_angles]
+base_positions       = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
+base_velocities      = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
 
 
 # Start Simulation
@@ -132,6 +143,7 @@ for j in range(TEST_STEPS):
     des_q  = env.robot.ComputeInverseKinematics(legID = i, xyz_coord = leg_xyz) 
     des_dq = np.zeros(3)
 
+    # Joint PD
     tau += kp * (des_q - real_q) + kd * (des_dq - real_dq)   
 
     # 增加 笛卡尔坐标 PD (add Cartesian PD contribution)
@@ -148,7 +160,14 @@ for j in range(TEST_STEPS):
       tau += J.T @ ((kpCartesian @ (des_p - real_p) + kdCartesian @ (des_dp - real_dp))) 
 
       # Data record
-      foot_positions[j, i, :] = real_p                           # Store real foot position for leg i at time step j
+      cpg_states[j,:,0] = cpg.get_r()
+      cpg_states[j,:,1] = cpg.get_theta()
+      cpg_states[j,:,2] = cpg.get_dr()
+      cpg_states[j,:,3] = cpg.get_dtheta()
+      foot_positions_real[j, i, :] = real_p                      # Store real foot position for leg i at time step j
+      foot_positions_des[j, i, :]  = des_p                       # Store desired foot position for leg i at time step j
+      foot_angles_real[j, i, :]    = real_q                      # Store real foot angles for leg i at time step j
+      foot_angles_des[j, i, :]     = des_q                       # Store desired foot angles for leg i at time step j
       base_positions[j, :]  = env.robot.GetBasePosition()        # Store real base position at time step j
       base_velocities[j, :] = env.robot.GetBaseLinearVelocity()  # Store real base velocity at time step j
 
@@ -161,31 +180,38 @@ for j in range(TEST_STEPS):
   # [#0000FF TODO] save any CPG or robot states
 
 
-
 ##################################################### 
 # PLOTS
 #####################################################
-# example
-# fig = plt.figure()
-# plt.plot(t,joint_pos[1,:], label='FR thigh')  #00FF00 joint_pos 这个变量上面没有
-# plt.legend(['x','y','z'])
-# plt.show()
+from functions.plot import *
 
-# 可视化脚端位置变化
-fig = plt.figure()
-# for i in range(4):
-#     plt.plot(t, foot_positions[:, i, 0], label=f'Leg {i+1} x')  # Plot x position
-#     plt.plot(t, foot_positions[:, i, 1], label=f'Leg {i+1} y')  # Plot y position
-#     plt.plot(t, foot_positions[:, i, 2], label=f'Leg {i+1} z')  # Plot z position
-plt.plot(t, base_velocities[:, 0], label='Base x velocity')  # Plot base x velocity
-plt.legend()
-plt.xlabel('Time (s)')
-plt.ylabel('Foot Position (m/s)')
-plt.title('Foot Positions Over Time')
-plt.grid()
-plt.show()
+# 3.1 Plot CPG States (Trot Gait)
+# plot_cpg_states(t, cpg_states)
+
+# 3.2 Plot Foot Positions (Trot Gait)
+# plot_real_vs_desired(
+#     t            = t,
+#     real_data    = foot_positions_real,
+#     desired_data = foot_positions_des,
+#     labels       = ['X', 'Y', 'Z'],
+#     y_label      = 'Position (m)',
+#     title        = 'Foot Positions: Real vs Desired'
+# )
 
 
+# 3.3 Plot Foot Angles (Trot Gait)
+# plot_real_vs_desired(
+#     t            = t,
+#     real_data    = foot_angles_real,
+#     desired_data = foot_angles_des,
+#     labels       = ['X', 'Y', 'Z'],
+#     y_label      = 'Angle (rad)',
+#     title        = 'Angles: Real vs Desired'
+# )
+
+
+# 3.5 Plot Base Velocity (Trot Gait)
+plot_base_velocity(t, base_velocities)
 
 # 可用变量
 #      名称           说明                         变量名
