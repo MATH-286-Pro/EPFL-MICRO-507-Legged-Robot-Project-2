@@ -47,8 +47,8 @@ from env.quadruped_gym_env import QuadrupedGymEnv
 
 
 ADD_CARTESIAN_PD = True 
-TIME_STEP = 0.001
-foot_y = 0.0838 # this is the hip length 
+TIME_STEP = 0.001  # Simulate in 1ms
+foot_y    = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
 # 创建——环境类 
@@ -87,6 +87,14 @@ kd=np.array([2,2,2])
 kpCartesian = np.diag([500]*3)
 kdCartesian = np.diag([20]*3)
 
+
+# Data record
+foot_positions  = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_coordinates]
+base_positions  = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
+base_velocities = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
+
+
+# Start Simulation
 for j in range(TEST_STEPS):
   # initialize torque array to send to motors
   action = np.zeros(12) 
@@ -102,8 +110,10 @@ for j in range(TEST_STEPS):
   # loop through desired foot positions and calculate torques
   for i in range(4):
     # initialize torques for leg_i
-    tau = np.zeros(3)
-
+    tau         = np.zeros(3)
+    real_p_list = np.zeros(3*4)
+    group_index = np.arange(3*i, 3*i+3)
+    
     # 足末端：目标位置
     # 注意：跟 Project 0 不一样，这里是三维的
     # get desired foot i pos (xi, yi, zi) in leg frame 
@@ -116,8 +126,8 @@ for j in range(TEST_STEPS):
     # [#0000FF TODO] Add joint PD contribution to tau for leg i (Equation 4)  
 
     # [#00FF00] 获取实际参数     # Get actuall angle and angular velocity
-    real_q  = q[3*i:3*i+3]
-    real_dq = dq[3*i:3*i+3]
+    real_q  = q[group_index]
+    real_dq = dq[group_index]
 
     des_q  = env.robot.ComputeInverseKinematics(legID = i, xyz_coord = leg_xyz) 
     des_dq = np.zeros(3)
@@ -137,6 +147,11 @@ for j in range(TEST_STEPS):
       des_dp = np.zeros(3)
       tau += J.T @ ((kpCartesian @ (des_p - real_p) + kdCartesian @ (des_dp - real_dp))) 
 
+      # Data record
+      foot_positions[j, i, :] = real_p                           # Store real foot position for leg i at time step j
+      base_positions[j, :]  = env.robot.GetBasePosition()        # Store real base position at time step j
+      base_velocities[j, :] = env.robot.GetBaseLinearVelocity()  # Store real base velocity at time step j
+
     # Set tau for leg_i in action vector
     action[3*i:3*i+3] = tau
 
@@ -155,3 +170,27 @@ for j in range(TEST_STEPS):
 # plt.plot(t,joint_pos[1,:], label='FR thigh')  #00FF00 joint_pos 这个变量上面没有
 # plt.legend(['x','y','z'])
 # plt.show()
+
+# 可视化脚端位置变化
+fig = plt.figure()
+# for i in range(4):
+#     plt.plot(t, foot_positions[:, i, 0], label=f'Leg {i+1} x')  # Plot x position
+#     plt.plot(t, foot_positions[:, i, 1], label=f'Leg {i+1} y')  # Plot y position
+#     plt.plot(t, foot_positions[:, i, 2], label=f'Leg {i+1} z')  # Plot z position
+plt.plot(t, base_velocities[:, 0], label='Base x velocity')  # Plot base x velocity
+plt.legend()
+plt.xlabel('Time (s)')
+plt.ylabel('Foot Position (m/s)')
+plt.title('Foot Positions Over Time')
+plt.grid()
+plt.show()
+
+
+
+# 可用变量
+#      名称           说明                         变量名
+#   实际足端位置     第 i 条腿的 x,y,z 坐标       real_p     
+#   实际足端位置     第 i 条腿的 x,y,z 坐标       foot_positions(:,i,0) 第 i 条腿的 x 位置                    
+#   实际足端位置     第 i 条腿的 x,y,z 坐标       foot_positions(:,i,1) 第 i 条腿的 y 位置                    
+#   机器人线速度     返回 x,y,z 三轴线速度         env.robot.GetBaseLinearVelocity() 
+#   机器人位置       返回 x,y,z 三轴线坐标         env.robot.GetBasePosition()
