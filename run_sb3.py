@@ -53,20 +53,20 @@ if __name__ == "__main__":
     ###############################################################################################################
     #00FFFF Setting 1:
     LEARNING_ALG = "SAC"   # or "PPO"
-    NUM_ENVS     = 2       # how many pybullet environments to create for data collection   #00FF00
+    NUM_ENVS     = 16       # how many pybullet environments to create for data collection   #00FF00
     LOAD_NN      = True    # if you want to initialize training with a previous model       #00FF00 Continue last training 继续上次训练
-    LOAD_DIR     = '123124205607_diy_SAC_NoNoise_FLAT_new_Local'
+    LOAD_DIR     = '2501062025_diy_SAC_Noise_FLAT_Local_con'
     On_CoLab     = False   # Trained on CoLab or not
     SAVE_FREQ    = 20000/NUM_ENVS   # Set save frequency
 
     #00FFFF Setting 2:
-    env_configs = {"motor_control_mode":     "DIY",
-                   "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", "FLAGRUN", None
+    env_configs = {"motor_control_mode":     "DIY", # 'CPG', 'PD'
+                   "task_env":               "LR_COURSE_TASK", #"FWD_LOCOMOTION", "FLAGRUN", "LR_COURSE_TASK"
                    "observation_space_mode": "LR_COURSE_OBS",
                    "render":                  False,  
                    "terrain":                 None, #'SLOPES',        # "SLOPES"
-                   "add_noise":               False,
-                   "EPISODE_LENGTH":          15,
+                   "add_noise":               True,
+                   "EPISODE_LENGTH":          20,
                    "MAX_FWD_VELOCITY":        8,
                    }
     ###############################################################################################################

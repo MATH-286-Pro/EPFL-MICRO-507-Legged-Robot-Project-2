@@ -61,8 +61,8 @@ env = QuadrupedGymEnv(render=True,              # visualize
                     time_step=TIME_STEP,
                     action_repeat=1,
                     motor_control_mode="TORQUE",
-                    add_noise=False,    # start in ideal conditions
-                    # record_video=True
+                    add_noise=False,            # start in ideal conditions
+                    record_video=True
                     )
 
 # 创建——中央发生器类 

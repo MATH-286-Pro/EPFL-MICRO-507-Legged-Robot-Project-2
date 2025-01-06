@@ -361,3 +361,70 @@ def load_rllib_v2(path: str) -> pandas.DataFrame:
 
     return data_frame, timestep_totals, all_episode_rewards, all_episode_lengths
 
+
+
+# 添加测试
+def plot_results_comparison(dirs1, dirs2, legend1, legend2, num_timesteps = 10e10, xaxis = 'timesteps', task_name = 'SAC ', height = 2):
+    """
+    Plot the comparison of results from two training sessions.
+
+    :param dirs1: ([str]) the save location of the first set of results to plot
+    :param dirs2: ([str]) the save location of the second set of results to plot
+    :param num_timesteps: (int or None) only plot the points below this value
+    :param xaxis: (str) the axis for the x and y output
+        (can be X_TIMESTEPS='timesteps', X_EPISODES='episodes' or X_WALLTIME='walltime_hrs')
+    :param task_name: (str) the title of the task to plot
+    """
+
+    tslist1 = []
+    tslist2 = []
+
+    # Load results for both training sessions
+    for folder in dirs1:
+        timesteps = load_results(folder)
+        if num_timesteps is not None:
+            timesteps = timesteps[timesteps.l.cumsum() <= num_timesteps]
+        tslist1.append(timesteps)
+
+    for folder in dirs2:
+        timesteps = load_results(folder)
+        if num_timesteps is not None:
+            timesteps = timesteps[timesteps.l.cumsum() <= num_timesteps]
+        tslist2.append(timesteps)
+    
+    # 数据点
+    xy_list1 = [ts2xy(timesteps_item, xaxis) for timesteps_item in tslist1]
+    xy_list2 = [ts2xy(timesteps_item, xaxis) for timesteps_item in tslist2]
+
+    ########################################################
+    # 开始画图 Reward
+    plt.figure(figsize=(8, height))
+    maxx1 = max(xy[0][-1] for xy in xy_list1)
+    maxx2 = max(xy[0][-1] for xy in xy_list2)
+    maxx = max(maxx1, maxx2)
+    minx = 0
+
+    for (i, (x, y)) in enumerate(xy_list1):
+        color = COLORS[0]
+        plt.scatter(x, y, s=2, c=color)
+        if x.shape[0] >= EPISODES_WINDOW:
+            x, y_mean = window_func(x, y, EPISODES_WINDOW, np.mean)
+            plt.plot(x, y_mean, color=color)
+
+    for (i, (x, y)) in enumerate(xy_list2):
+        color = COLORS[1]
+        plt.scatter(x, y, s=2, c=color) # 散点图
+        if x.shape[0] >= EPISODES_WINDOW:
+            x, y_mean = window_func(x, y, EPISODES_WINDOW, np.mean)
+            plt.plot(x, y_mean, color=color)
+
+    plt.grid()
+    plt.legend([legend1, None, legend2, None])
+    plt.xlim(minx, maxx)
+    plt.title(task_name + 'Rewards')
+    plt.xlabel(xaxis)
+    plt.ylabel("Episode Rewards")
+    plt.tight_layout()
+
+    ########################################################
+    # 开始画图 Episode Length

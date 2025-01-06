@@ -451,7 +451,7 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
 
     # 轴速度变化惩罚 #00FF00 #00FF00
     pitch_velocity_penalty = abs(self.robot.GetBaseAngularVelocity()[1])
-    roll_velocity_penalty = abs(self.robot.GetBaseAngularVelocity()[0])
+    roll_penalty = abs(self.robot.GetBaseOrientationRollPitchYaw()[0])
 
     # minimize energy 能量
     energy_reward = 0 
@@ -462,8 +462,8 @@ class QuadrupedGymEnv(gym.Env): # 这是一个从 Env 继承过来的类 This is
              - yaw_penalty \
              - drift_penalty \
              - 0.01 * energy_reward \
-             - 0.1 * pitch_velocity_penalty \
-             - 0.1 * roll_velocity_penalty \
+             - 0.05 * pitch_velocity_penalty \
+             - 0.05 * roll_penalty \
              - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
 
     return max(reward,0) # keep rewards positive
