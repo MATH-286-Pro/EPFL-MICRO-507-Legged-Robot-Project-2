@@ -59,21 +59,22 @@ interm_dir = "./logs/intermediate_models/"
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
+TotalTime  = 5
 
 ###############################################################################################################
 #00FFFF Setting 1:
 LEARNING_ALG = "SAC"
 # target_dir   = '121024143554'   #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
-target_dir   = '2501051727_diy_SAC_Noise_FLAT_Local_con_HEYUN'
+target_dir   = '2411101145_pd_SAC_NoNoise_FLAT_Local_new'
 #00FFFF Setting 2:
-env_config = { "motor_control_mode":     "DIY",
+env_config = { "motor_control_mode":     "PD",
                "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", 
-               "observation_space_mode": "LR_COURSE_OBS",
+               "observation_space_mode": "DEFAULT",  # "DEFAULT", "LR_COURSE_OBS",
                "terrain":                None, #SLOPES', #"SLOPES", #"SLOPES", #"RANDOM",  
                "render":                 True,
                "record_video":           False, #False,
-               "add_noise":              True,
-               "EPISODE_LENGTH":         20,
+               "add_noise":              False,
+               "EPISODE_LENGTH":         TotalTime,
              } 
 
 # env_config['competition_env'] = True
@@ -110,9 +111,25 @@ print("\nLoaded model", model_name, "\n")
 obs = env.reset()
 episode_reward = 0
 
-# #0000FF TODO initialize arrays to save data from simulation 
+################################################################################################################
+# #0000FF TODO initialize arrays to save data from simulation
+TIME_STEP = 0.005  
+TEST_STEPS = int(TotalTime / (TIME_STEP))
+t = np.arange(TEST_STEPS)*TIME_STEP
 
-for i in range(2000):
+# Data record
+cpg_states           = np.zeros((TEST_STEPS, 4, 4))  # Shape: [time_steps, 4_legs, 4_states (r,theta,r_dot,theta_dot)]
+foot_positions_real  = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_coordinates]
+foot_positions_des   = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_coordinates]
+foot_angles_real     = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_angles]
+foot_angles_des      = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_legs, 3_angles]
+base_positions       = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
+base_velocities      = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
+base_RollPitchYaw    = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, RollPitchYaw]
+energy_list          = np.zeros((TEST_STEPS, 1))     # Shape: [time_steps, 1]
+################################################################################################################
+
+for i in range(TEST_STEPS):
     action, _states = model.predict(obs,deterministic=False) # sample at test time? (#0000FF TODO: test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
@@ -123,15 +140,19 @@ for i in range(2000):
 
     # #0000FF TODO save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
-    #
-    
+    base_positions [i, :] = env.envs[0].env.robot.GetBasePosition()
+    base_velocities[i, :] = env.envs[0].env.robot.GetBaseLinearVelocity()
+    base_RollPitchYaw[i, :] = env.envs[0].env.robot.GetBaseOrientationRollPitchYaw()
+    energy = 0
+    for tau,vel in zip (env.envs[0].env._dt_motor_torques,env.envs[0].env._dt_motor_velocities):
+        energy += np.abs(np.dot(tau,vel)) * env.envs[0].env._time_step
+    energy_list[i] = energy
+
 # #0000FF TODO make plots:
+from functions.plot import *
+# plot_base_velocity(t, base_velocities, figsize=(10, 3), window_size=500) 
+# plot_RollPitch(t, base_RollPitchYaw, figsize=(10, 6))
 
-
-#00FF00 English comments:
-# This file is only used to check reward change
-
-#00FF00 中文注释:
-# 本文件用于查看奖励函数的奖励变化过程
-# 没有其他用处
-# 训练过程在 run_sb3 中进行
+# 示例：传入要绘制的变量
+data_list = ['energy', 'roll', 'x_velocity']  # 可以是 ['energy', 'roll', 'pitch', 'yaw', 'x_velocity']
+plot_data(t, data_list, base_positions, base_velocities, base_RollPitchYaw, energy_list)

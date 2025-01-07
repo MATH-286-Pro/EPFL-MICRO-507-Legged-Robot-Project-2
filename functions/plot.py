@@ -124,7 +124,7 @@ def plot_real_vs_desired(t, real_data, desired_data, labels, y_label, title, col
 
 
 
-def plot_base_velocity(t, base_velocities, window_size=1000):
+def plot_base_velocity(t, base_velocities, figsize=(10, 6) , window_size=1000):
     """
     绘制基座速度，包括原始速度和平滑后的速度。
     
@@ -140,7 +140,7 @@ def plot_base_velocity(t, base_velocities, window_size=1000):
     smoothed_speed = np.convolve(speed, np.ones(window_size)/window_size, mode='same')
     
     # 绘图
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=figsize)
     plt.plot(t, speed, label='Original Base Speed', color='blue', alpha=0.6)  # 原始速度
     plt.plot(t, smoothed_speed, label='Smoothed Base Speed', color='red', linestyle='dashed')  # 平滑后的速度
     plt.legend()
@@ -150,3 +150,88 @@ def plot_base_velocity(t, base_velocities, window_size=1000):
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
+
+import matplotlib.pyplot as plt
+
+def plot_RollPitch(t, base_RollPitchYaw, figsize=(10, 6)):
+    fig, ax = plt.subplots(nrows=2, figsize=figsize)
+    
+    # 绘制 Roll 在第一张图
+    ax[0].plot(t, base_RollPitchYaw[:, 0], label='Roll', color='blue', linestyle='solid')
+    ax[0].set_xlabel('Time (s)')
+    ax[0].set_ylabel('Angle (rad)')
+    ax[0].set_title('Roll')
+    ax[0].grid(True)
+    ax[0].legend()
+    
+    # 绘制 Pitch 在第二张图
+    ax[1].plot(t, base_RollPitchYaw[:, 1], label='Pitch', color='green', linestyle='solid')
+    ax[1].set_xlabel('Time (s)')
+    ax[1].set_ylabel('Angle (rad)')
+    ax[1].set_title('Pitch')
+    ax[1].grid(True)
+    ax[1].legend()
+    
+    # 调整布局
+    plt.tight_layout()
+    plt.show()
+
+
+
+## 添加测试
+def plot_data(t, data_list, base_positions, base_velocities, base_RollPitchYaw, energy, figsize=(10, 8)):
+    # 创建子图的数量和图形布局
+    n_plots = len(data_list)
+    fig, ax = plt.subplots(nrows=n_plots, figsize=figsize)
+
+    # 确保 ax 是列表（即使只有一个子图）
+    if n_plots == 1:
+        ax = [ax]
+
+    # 遍历输入的 data_list 并绘制相应的数据
+    for i, data in enumerate(data_list):
+        if data == 'energy':
+            ax[i].plot(t, energy, label='Energy', color='blue', linestyle='solid')
+            ax[i].set_xlabel('Time (s)')
+            ax[i].set_ylabel('Energy (J)')
+            ax[i].set_title('Energy Over Time')
+            ax[i].grid(True)
+            ax[i].legend()
+        
+        elif data == 'roll':
+            ax[i].plot(t, base_RollPitchYaw[:, 0], label='Roll', color='blue', linestyle='solid')
+            ax[i].set_xlabel('Time (s)')
+            ax[i].set_ylabel('Angle (rad)')
+            ax[i].set_title('Roll Over Time')
+            ax[i].grid(True)
+            ax[i].legend()
+
+        elif data == 'pitch':
+            ax[i].plot(t, base_RollPitchYaw[:, 1], label='Pitch', color='green', linestyle='solid')
+            ax[i].set_xlabel('Time (s)')
+            ax[i].set_ylabel('Angle (rad)')
+            ax[i].set_title('Pitch Over Time')
+            ax[i].grid(True)
+            ax[i].legend()
+
+        elif data == 'yaw':
+            ax[i].plot(t, base_RollPitchYaw[:, 2], label='Yaw', color='red', linestyle='solid')
+            ax[i].set_xlabel('Time (s)')
+            ax[i].set_ylabel('Angle (rad)')
+            ax[i].set_title('Yaw Over Time')
+            ax[i].grid(True)
+            ax[i].legend()
+
+        elif data == 'x_velocity':
+            ax[i].plot(t, base_velocities[:, 0], label='X Velocity', color='purple', linestyle='solid')
+            ax[i].set_xlabel('Time (s)')
+            ax[i].set_ylabel('Velocity (m/s)')
+            ax[i].set_title('X Velocity Over Time')
+            ax[i].grid(True)
+            ax[i].legend()
+
+    plt.tight_layout()
+    plt.show()
+
+

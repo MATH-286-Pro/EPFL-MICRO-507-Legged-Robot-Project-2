@@ -51,8 +51,8 @@ import os
 os.environ["__NV_PRIME_RENDER_OFFLOAD"] = "1"
 os.environ["__GLX_VENDOR_LIBRARY_NAME"] = "nvidia"
 #####################################################################
-
-ADD_CARTESIAN_PD = True 
+USE_JOINT_PD     = True
+USE_CARTESIAN_PD = True 
 TIME_STEP = 0.001  # Simulate in 1ms
 foot_y    = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
@@ -62,14 +62,14 @@ sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negati
 # (Cearte env class)
 # (Create the quadruped robot class at the same time)
 env = QuadrupedGymEnv(
-                    render=True,                # visualize
+                    # render=True,                # visualize
                     on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
                     time_step=TIME_STEP,
                     action_repeat=1,
                     motor_control_mode="TORQUE",
                     add_noise=False,            # start in ideal conditions
-                    record_video=True
+                    # record_video=True
                     )
 
 # 创建——中央发生器类 
@@ -79,7 +79,7 @@ cpg = HopfNetwork(time_step=TIME_STEP)
 # cpg.use_RL = True #00FF00 调用强化学习测试
 cpg._set_gait("TROT") #00FF00 "TROT" "PACE" "BOUND" "WALK"
 
-TotalTime  = 7
+TotalTime  = 5
 TEST_STEPS = int(TotalTime / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
@@ -147,7 +147,7 @@ for j in range(TEST_STEPS):
     tau += kp * (des_q - real_q) + kd * (des_dq - real_dq)   
 
     # 增加 笛卡尔坐标 PD (add Cartesian PD contribution)
-    if ADD_CARTESIAN_PD:
+    if USE_CARTESIAN_PD:
       # [#0000FF TODO] Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
       J, real_p = env.robot.ComputeJacobianAndPosition(i)
       
@@ -159,18 +159,6 @@ for j in range(TEST_STEPS):
       des_dp = np.zeros(3)
       tau += J.T @ ((kpCartesian @ (des_p - real_p) + kdCartesian @ (des_dp - real_dp))) 
 
-      # Data record
-      cpg_states[j,:,0] = cpg.get_r()
-      cpg_states[j,:,1] = cpg.get_theta()
-      cpg_states[j,:,2] = cpg.get_dr()
-      cpg_states[j,:,3] = cpg.get_dtheta()
-      foot_positions_real[j, i, :] = real_p                      # Store real foot position for leg i at time step j
-      foot_positions_des[j, i, :]  = des_p                       # Store desired foot position for leg i at time step j
-      foot_angles_real[j, i, :]    = real_q                      # Store real foot angles for leg i at time step j
-      foot_angles_des[j, i, :]     = des_q                       # Store desired foot angles for leg i at time step j
-      base_positions[j, :]  = env.robot.GetBasePosition()        # Store real base position at time step j
-      base_velocities[j, :] = env.robot.GetBaseLinearVelocity()  # Store real base velocity at time step j
-
     # Set tau for leg_i in action vector
     action[3*i:3*i+3] = tau
 
@@ -178,7 +166,16 @@ for j in range(TEST_STEPS):
   env.step(action) 
 
   # [#0000FF TODO] save any CPG or robot states
-
+  cpg_states[j,:,0] = cpg.get_r()
+  cpg_states[j,:,1] = cpg.get_theta()
+  cpg_states[j,:,2] = cpg.get_dr()
+  cpg_states[j,:,3] = cpg.get_dtheta()
+  foot_positions_real[j, i, :] = real_p                             # Store real foot position for leg i at time step j
+  foot_positions_des [j, i, :] = des_p                              # Store desired foot position for leg i at time step j
+  foot_angles_real   [j, i, :] = real_q                             # Store real foot angles for leg i at time step j
+  foot_angles_des    [j, i, :] = des_q                              # Store desired foot angles for leg i at time step j
+  base_positions     [j, :]    = env.robot.GetBasePosition()        # Store real base position at time step j
+  base_velocities    [j, :]    = env.robot.GetBaseLinearVelocity()  # Store real base velocity at time step j
 
 ##################################################### 
 # PLOTS
@@ -189,14 +186,14 @@ from functions.plot import *
 # plot_cpg_states(t, cpg_states)
 
 # 3.2 Plot Foot Positions (Trot Gait)
-# plot_real_vs_desired(
-#     t            = t,
-#     real_data    = foot_positions_real,
-#     desired_data = foot_positions_des,
-#     labels       = ['X', 'Y', 'Z'],
-#     y_label      = 'Position (m)',
-#     title        = 'Foot Positions: Real vs Desired'
-# )
+plot_real_vs_desired(
+    t            = t,
+    real_data    = foot_positions_real,
+    desired_data = foot_positions_des,
+    labels       = ['X', 'Y', 'Z'],
+    y_label      = 'Position (m)',
+    title        = 'Foot Positions: Real vs Desired'
+)
 
 
 # 3.3 Plot Foot Angles (Trot Gait)
@@ -211,7 +208,7 @@ from functions.plot import *
 
 
 # 3.5 Plot Base Velocity (Trot Gait)
-plot_base_velocity(t, base_velocities)
+# plot_base_velocity(t, base_velocities)
 
 # 可用变量
 #      名称           说明                         变量名
