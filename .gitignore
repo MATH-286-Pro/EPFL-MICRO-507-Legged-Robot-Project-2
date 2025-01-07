@@ -1,7 +1,17 @@
 .DS_Store
 *.egg-info
 __pycache__/
-logs/
+
+
+/logs/intermediate_models/*
+!/logs/intermediate_models/2411101145_pd_SAC_NoNoise_FLAT_Local_new
+!/logs/intermediate_models/2412291654_cpg_SAC_NoNoise_FLAT_CoLab_new
+!/logs/intermediate_models/2412301822_cpg_SAC_Noise_FLAT_con_CoLab
+!/logs/intermediate_models/2412311038_cpg_SAC_NoNoise_SLOPES_con_CoLab
+!/logs/intermediate_models/2501050049_diy_SAC_NoNoise_SLOPES_Local_HEYUN
+!/logs/intermediate_models/2501051727_diy_SAC_Noise_FLAT_Local_con_HEYUN
+
+
 
 .vscode
 __pycache__
