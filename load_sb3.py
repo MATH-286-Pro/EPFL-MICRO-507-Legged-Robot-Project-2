@@ -63,10 +63,9 @@ interm_dir = "./logs/intermediate_models/"
 ###############################################################################################################
 #00FFFF Setting 1:
 LEARNING_ALG = "SAC"
-# target_dir   = '121024143554'   #00FF00 # path to saved models, i.e. interm_dir + '102824115106'
 target_dir   = '2411101145_pd_SAC_NoNoise_FLAT_Local_new'
 #00FFFF Setting 2:
-env_config = { "motor_control_mode":     "PD",
+env_config = { "motor_control_mode":     "CPG", # 'CPG', 'PD', 'DIY'
                "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", 
                "observation_space_mode": "DEFAULT",  # "DEFAULT", "LR_COURSE_OBS",
                "terrain":                None, #SLOPES', #"SLOPES", #"SLOPES", #"RANDOM",  
@@ -86,10 +85,10 @@ model_name = get_latest_model(log_dir)
 
 
 # Plot results
-# monitor_results = load_results(log_dir)
-# print(monitor_results)
-# plot_results([log_dir] , 10e10, 'timesteps', LEARNING_ALG + ' ')
-# plt.show() 
+monitor_results = load_results(log_dir)
+print(monitor_results)
+plot_results([log_dir] , 10e10, 'timesteps', LEARNING_ALG + ' ')
+plt.show() 
 
 
 # reconstruct env 
@@ -129,6 +128,7 @@ base_RollPitchYaw    = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, RollP
 energy_list          = np.zeros(TEST_STEPS)          # Shape: [time_steps]
 ################################################################################################################
 
+# STart Simulation
 for i in range(TEST_STEPS):
     action, _states = model.predict(obs,deterministic=False) # sample at test time? (#0000FF TODO: test)
     obs, rewards, dones, info = env.step(action)
@@ -152,7 +152,5 @@ for i in range(TEST_STEPS):
 from functions.plot import *
 # plot_base_velocity(t, base_velocities, figsize=(10, 3), window_size=500) 
 # plot_RollPitch(t, base_RollPitchYaw, figsize=(10, 6))
-
-# 示例：传入要绘制的变量
-data_list = ['energy', 'pitch', 'x_velocity']  # 可以是 ['energy', 'roll', 'pitch', 'yaw', 'x_velocity']
+data_list = ['energy', 'pitch', 'x_velocity']  # Can be ['energy', 'roll', 'pitch', 'yaw', 'x_velocity']
 plot_data(t, data_list, base_positions, base_velocities, base_RollPitchYaw, energy_list)

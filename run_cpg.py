@@ -46,10 +46,10 @@ from env.hopf_network import HopfNetwork
 from env.quadruped_gym_env import QuadrupedGymEnv
 
 #####################################################################
-import os
-# 强制使用 Nvidia GPU
-os.environ["__NV_PRIME_RENDER_OFFLOAD"] = "1"
-os.environ["__GLX_VENDOR_LIBRARY_NAME"] = "nvidia"
+# import os
+# # USE Nvidia GPU
+# os.environ["__NV_PRIME_RENDER_OFFLOAD"] = "1"
+# os.environ["__GLX_VENDOR_LIBRARY_NAME"] = "nvidia"
 #####################################################################
 USE_JOINT_PD     = True
 USE_CARTESIAN_PD = True 
@@ -57,12 +57,11 @@ TIME_STEP = 0.001  # Simulate in 1ms
 foot_y    = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
-# 创建——环境类 
-# 环境类创建过程中会一起创建 四足机器人实例  
+
 # (Cearte env class)
 # (Create the quadruped robot class at the same time)
 env = QuadrupedGymEnv(
-                    # render=True,                # visualize
+                    render=True,                # visualize
                     on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
                     time_step=TIME_STEP,
@@ -72,11 +71,10 @@ env = QuadrupedGymEnv(
                     # record_video=True
                     )
 
-# 创建——中央发生器类 
 # (Create CPG class)
 # initialize Hopf Network, supply gait
 cpg = HopfNetwork(time_step=TIME_STEP)
-# cpg.use_RL = True #00FF00 调用强化学习测试
+# cpg.use_RL = True #00FF00 
 cpg._set_gait("TROT") #00FF00 "TROT" "PACE" "BOUND" "WALK"
 
 TotalTime  = 5
@@ -84,9 +82,6 @@ TEST_STEPS = int(TotalTime / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [#0000FF TODO] initialize data structures to save CPG and robot states
-
-
-# 设置 PID 参数 (Set PID Parameter)
 # joint PD gains
 kp=np.array([100,100,100])
 kd=np.array([2,2,2])
@@ -113,10 +108,9 @@ for j in range(TEST_STEPS):
   xs,zs = cpg.update()
   
   #0000FF TODO：get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
-  q  = env.robot.GetMotorAngles()     # 获取所有(12个)电机角度 Get all (12) motors' angle
-  dq = env.robot.GetMotorVelocities() # 获取所有(12个)电机速度 Get all (12) motors' velocity
+  q  = env.robot.GetMotorAngles()     # Get all (12) motors' angle
+  dq = env.robot.GetMotorVelocities() # Get all (12) motors' velocity
 
-  # 对四只脚进行计算
   # computation for 4 legs
   # loop through desired foot positions and calculate torques
   for i in range(4):
@@ -125,18 +119,14 @@ for j in range(TEST_STEPS):
     real_p_list = np.zeros(3*4)
     group_index = np.arange(3*i, 3*i+3)
     
-    # 足末端：目标位置
-    # 注意：跟 Project 0 不一样，这里是三维的
     # get desired foot i pos (xi, yi, zi) in leg frame 
     # attension: it's 3 dimensional
     leg_xyz = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
     
-    # 1.使用逆运动学计算关节角度   1.Use inverse kinematics to compute the joint angle 
-    # 2.使用PID输出力矩           2.Use PID to compute the output torque
+    # 1.Use inverse kinematics to compute the joint angle 
+    # 2.Use PID to compute the output torque
     # [#0000FF TODO] call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py) 
     # [#0000FF TODO] Add joint PD contribution to tau for leg i (Equation 4)  
-
-    # [#00FF00] 获取实际参数     # Get actuall angle and angular velocity
     real_q  = q[group_index]
     real_dq = dq[group_index]
 
@@ -162,20 +152,30 @@ for j in range(TEST_STEPS):
     # Set tau for leg_i in action vector
     action[3*i:3*i+3] = tau
 
+    # [#0000FF TODO] save any CPG or robot states
+    cpg_states[j,:,0] = cpg.get_r()
+    cpg_states[j,:,1] = cpg.get_theta()
+    cpg_states[j,:,2] = cpg.get_dr()
+    cpg_states[j,:,3] = cpg.get_dtheta()
+    foot_positions_real[j, i, :] = real_p                             # Store real foot position for leg i at time step j
+    foot_positions_des [j, i, :] = des_p                              # Store desired foot position for leg i at time step j
+    foot_angles_real   [j, i, :] = real_q                             # Store real foot angles for leg i at time step j
+    foot_angles_des    [j, i, :] = des_q                              # Store desired foot angles for leg i at time step j
+    base_positions     [j, :]    = env.robot.GetBasePosition()        # Store real base position at time step j
+    base_velocities    [j, :]    = env.robot.GetBaseLinearVelocity()  # Store real base velocity at time step j
+
   # send torques to robot and simulate TIME_STEP seconds 
   env.step(action) 
 
-  # [#0000FF TODO] save any CPG or robot states
-  cpg_states[j,:,0] = cpg.get_r()
-  cpg_states[j,:,1] = cpg.get_theta()
-  cpg_states[j,:,2] = cpg.get_dr()
-  cpg_states[j,:,3] = cpg.get_dtheta()
-  foot_positions_real[j, i, :] = real_p                             # Store real foot position for leg i at time step j
-  foot_positions_des [j, i, :] = des_p                              # Store desired foot position for leg i at time step j
-  foot_angles_real   [j, i, :] = real_q                             # Store real foot angles for leg i at time step j
-  foot_angles_des    [j, i, :] = des_q                              # Store desired foot angles for leg i at time step j
-  base_positions     [j, :]    = env.robot.GetBasePosition()        # Store real base position at time step j
-  base_velocities    [j, :]    = env.robot.GetBaseLinearVelocity()  # Store real base velocity at time step j
+
+
+
+
+
+
+
+
+
 
 ##################################################### 
 # PLOTS
@@ -206,14 +206,5 @@ plot_real_vs_desired(
 #     title        = 'Angles: Real vs Desired'
 # )
 
-
 # 3.5 Plot Base Velocity (Trot Gait)
 # plot_base_velocity(t, base_velocities)
-
-# 可用变量
-#      名称           说明                         变量名
-#   实际足端位置     第 i 条腿的 x,y,z 坐标       real_p     
-#   实际足端位置     第 i 条腿的 x,y,z 坐标       foot_positions(:,i,0) 第 i 条腿的 x 位置                    
-#   实际足端位置     第 i 条腿的 x,y,z 坐标       foot_positions(:,i,1) 第 i 条腿的 y 位置                    
-#   机器人线速度     返回 x,y,z 三轴线速度         env.robot.GetBaseLinearVelocity() 
-#   机器人位置       返回 x,y,z 三轴线坐标         env.robot.GetBasePosition()
