@@ -59,7 +59,6 @@ interm_dir = "./logs/intermediate_models/"
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
-TotalTime  = 5
 
 ###############################################################################################################
 #00FFFF Setting 1:
@@ -71,10 +70,10 @@ env_config = { "motor_control_mode":     "PD",
                "task_env":               "FWD_LOCOMOTION", #"FWD_LOCOMOTION", 
                "observation_space_mode": "DEFAULT",  # "DEFAULT", "LR_COURSE_OBS",
                "terrain":                None, #SLOPES', #"SLOPES", #"SLOPES", #"RANDOM",  
-               "render":                 True,
+               "render":                 False, #True,
                "record_video":           False, #False,
                "add_noise":              False,
-               "EPISODE_LENGTH":         TotalTime,
+               "EPISODE_LENGTH":         10,
              } 
 
 # env_config['competition_env'] = True
@@ -113,7 +112,8 @@ episode_reward = 0
 
 ################################################################################################################
 # #0000FF TODO initialize arrays to save data from simulation
-TIME_STEP = 0.005  
+TotalTime  = 5
+TIME_STEP  = env.envs[0].env._time_step * 10  # 0.001 * 10
 TEST_STEPS = int(TotalTime / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
@@ -126,7 +126,7 @@ foot_angles_des      = np.zeros((TEST_STEPS, 4, 3))  # Shape: [time_steps, 4_leg
 base_positions       = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
 base_velocities      = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, 3_coordinates]
 base_RollPitchYaw    = np.zeros((TEST_STEPS, 3))     # Shape: [time_steps, RollPitchYaw]
-energy_list          = np.zeros((TEST_STEPS, 1))     # Shape: [time_steps, 1]
+energy_list          = np.zeros(TEST_STEPS)          # Shape: [time_steps]
 ################################################################################################################
 
 for i in range(TEST_STEPS):
@@ -154,5 +154,5 @@ from functions.plot import *
 # plot_RollPitch(t, base_RollPitchYaw, figsize=(10, 6))
 
 # 示例：传入要绘制的变量
-data_list = ['energy', 'roll', 'x_velocity']  # 可以是 ['energy', 'roll', 'pitch', 'yaw', 'x_velocity']
+data_list = ['energy', 'pitch', 'x_velocity']  # 可以是 ['energy', 'roll', 'pitch', 'yaw', 'x_velocity']
 plot_data(t, data_list, base_positions, base_velocities, base_RollPitchYaw, energy_list)

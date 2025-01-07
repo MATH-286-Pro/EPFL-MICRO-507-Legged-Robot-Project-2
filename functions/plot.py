@@ -181,6 +181,8 @@ def plot_RollPitch(t, base_RollPitchYaw, figsize=(10, 6)):
 
 ## 添加测试
 def plot_data(t, data_list, base_positions, base_velocities, base_RollPitchYaw, energy, figsize=(10, 8)):
+    rad2deg = 180 / np.pi
+
     # 创建子图的数量和图形布局
     n_plots = len(data_list)
     fig, ax = plt.subplots(nrows=n_plots, figsize=figsize)
@@ -192,33 +194,38 @@ def plot_data(t, data_list, base_positions, base_velocities, base_RollPitchYaw, 
     # 遍历输入的 data_list 并绘制相应的数据
     for i, data in enumerate(data_list):
         if data == 'energy':
-            ax[i].plot(t, energy, label='Energy', color='blue', linestyle='solid')
+
+            window_size = 20
+            smoothed_energy = np.convolve(energy, np.ones(window_size)/window_size, mode='same')
+
+            ax[i].plot(t, energy, label='Energy', color='blue',alpha = 0.6, linestyle='solid')
+            ax[i].plot(t, smoothed_energy, label='Smoothed Energy', color='purple', linestyle='dashed')
             ax[i].set_xlabel('Time (s)')
-            ax[i].set_ylabel('Energy (J)')
-            ax[i].set_title('Energy Over Time')
+            ax[i].set_ylabel('Energy (J/timestep)')
+            ax[i].set_title('Power consumtion Over Time')
             ax[i].grid(True)
             ax[i].legend()
         
         elif data == 'roll':
-            ax[i].plot(t, base_RollPitchYaw[:, 0], label='Roll', color='blue', linestyle='solid')
+            ax[i].plot(t, base_RollPitchYaw[:, 0]*rad2deg, label='Roll', color='blue', linestyle='solid')
             ax[i].set_xlabel('Time (s)')
-            ax[i].set_ylabel('Angle (rad)')
+            ax[i].set_ylabel('Angle (degree)')
             ax[i].set_title('Roll Over Time')
             ax[i].grid(True)
             ax[i].legend()
 
         elif data == 'pitch':
-            ax[i].plot(t, base_RollPitchYaw[:, 1], label='Pitch', color='green', linestyle='solid')
+            ax[i].plot(t, base_RollPitchYaw[:, 1]*rad2deg, label='Pitch', color='green', linestyle='solid')
             ax[i].set_xlabel('Time (s)')
-            ax[i].set_ylabel('Angle (rad)')
+            ax[i].set_ylabel('Angle (degree)')
             ax[i].set_title('Pitch Over Time')
             ax[i].grid(True)
             ax[i].legend()
 
         elif data == 'yaw':
-            ax[i].plot(t, base_RollPitchYaw[:, 2], label='Yaw', color='red', linestyle='solid')
+            ax[i].plot(t, base_RollPitchYaw[:, 2]*rad2deg, label='Yaw', color='red', linestyle='solid')
             ax[i].set_xlabel('Time (s)')
-            ax[i].set_ylabel('Angle (rad)')
+            ax[i].set_ylabel('Angle (degree)')
             ax[i].set_title('Yaw Over Time')
             ax[i].grid(True)
             ax[i].legend()
