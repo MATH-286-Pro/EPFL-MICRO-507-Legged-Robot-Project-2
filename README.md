@@ -1,6 +1,18 @@
 # Quadruped-Sim
 This repository contains an environment for simulating a quadruped robot.
 
+## Demonstration 
+### DCM (Divergent Component of Motion)
+https://github.com/user-attachments/assets/46bf9062-0b22-4fe3-81b6-d9501c538360
+
+### SAC + CPG
+https://github.com/user-attachments/assets/2147cd7c-2a24-4bbc-957d-1d260a3b9565
+
+
+
+
+
+
 ## Installation
 
 Recommend using a virtualenv (or conda) with python3.6 or higher. After installing virtualenv with pip, this can be done as follows:
